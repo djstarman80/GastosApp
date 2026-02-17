@@ -5,34 +5,25 @@ on:
     branches: [ master ]
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      pages: write
     steps:
       - uses: actions/checkout@v4
-
+      
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.41.0'
           channel: 'stable'
-
-      - run: flutter pub get
-      - run: flutter build web --release --base-href /GastosApp/
-      - run: ls -la build/web/
-
-      - name: Deploy
-        run: |
-          git config --global user.name 'github-actions[bot]'
-          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
           
-          cd ${{ github.workspace }}
-          rm -rf gh-pages-deploy
-          git clone --depth 1 --branch gh-pages https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/djstarman80/GastosApp.git gh-pages-deploy || git clone --depth 1 https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/djstarman80/GastosApp.git gh-pages-deploy
-          cd gh-pages-deploy
-          rm -rf *
-          cp -r ${{ github.workspace }}/build/web/* .
-          git add -A
-          git commit -m "Deploy to GitHub Pages"
-          git push origin gh-pages
+      - name: Install dependencies
+        run: flutter pub get
+        
+      - name: Build Web
+        run: flutter build web --release --base-href /GastosApp/
+        
+      - name: Deploy
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./build/web
