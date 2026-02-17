@@ -29,7 +29,7 @@ jobs:
           
           cd ${{ github.workspace }}
           rm -rf gh-pages-deploy
-          git clone --depth 1 --branch gh-pages https://github.com/djstarman80/GastosApp.git gh-pages-deploy || git clone --depth 1 https://github.com/djstarman80/GastosApp.git gh-pages-deploy
+          git clone --depth 1 --branch gh-pages https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/djstarman80/GastosApp.git gh-pages-deploy || git clone --depth 1 https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/djstarman80/GastosApp.git gh-pages-deploy
           cd gh-pages-deploy
           rm -rf *
           cp -r ${{ github.workspace }}/build/web/* .
