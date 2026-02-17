@@ -1,3 +1,4 @@
+import 'dart:html' as html;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -6,6 +7,7 @@ import '../providers/providers.dart';
 import '../../core/utils/currency_formatter.dart';
 import '../../core/utils/cuota_utils.dart';
 import '../../data/models/models.dart';
+import '../../data/services/backup_service.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -17,6 +19,8 @@ class HomeScreen extends ConsumerStatefulWidget {
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   int _selectedYear = DateTime.now().year;
   int _selectedMonth = DateTime.now().month;
+  final BackupService _backupService = BackupService();
+  bool _isLoading = false;
 
   static const List<String> _meses = [
     'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -140,6 +144,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         title: const Text('GastosApp'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.upload_file),
+            tooltip: 'Importar JSON',
+            onPressed: _isLoading ? null : _importData,
+          ),
+          IconButton(
+            icon: const Icon(Icons.save_alt),
+            tooltip: 'Exportar JSON',
+            onPressed: _isLoading ? null : _exportData,
+          ),
+          IconButton(
             icon: Icon(
               ref.watch(isDarkModeProvider)
                   ? Icons.light_mode
@@ -153,7 +167,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
         ],
       ),
-      body: RefreshIndicator(
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : RefreshIndicator(
         onRefresh: () async {
           await ref.read(gastoProvider.notifier).loadGastos();
           await ref.read(usuarioProvider.notifier).loadUsuarios();
@@ -325,6 +341,101 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       return Color(int.parse('0xFF$colorStr'));
     } catch (_) {
       return Colors.grey;
+    }
+  }
+
+  Future<void> _exportData() async {
+    setState(() => _isLoading = true);
+    try {
+      final json = await _backupService.exportToJson();
+      
+      final blob = html.Blob([json], 'application/json');
+      final url = html.Url.createObjectUrlFromBlob(blob);
+      final anchor = html.AnchorElement(href: url)
+        ..setAttribute('download', 'backup_gastosapp_${DateTime.now().toIso8601String()}.json')
+        ..click();
+      html.Url.revokeObjectUrl(url);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Backup exportado exitosamente')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al exportar: $e')),
+        );
+      }
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _importData() async {
+    final input = html.FileUploadInputElement();
+    input.accept = '.json';
+    input.click();
+
+    await input.onChange.first;
+    final file = input.files?.first;
+    if (file == null) return;
+
+    final reader = html.FileReader();
+    reader.readAsText(file);
+    await reader.onLoad.first;
+
+    final jsonString = reader.result as String;
+
+    final confirmReplace = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Importar Backup'),
+        content: const Text(
+          '¿Qué deseas hacer con los datos existentes?\n\n'
+          '• Agregar: Se agregarán a los datos actuales\n'
+          '• Reemplazar: Se borrarán todos los datos actuales',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Agregar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Reemplazar', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmReplace == null) return;
+
+    setState(() => _isLoading = true);
+    try {
+      await _backupService.importData(jsonString, replace: confirmReplace);
+      
+      await ref.read(usuarioProvider.notifier).loadUsuarios();
+      await ref.read(tarjetaProvider.notifier).loadTarjetas();
+      await ref.read(gastoProvider.notifier).loadGastos();
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Backup importado exitosamente')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al importar: $e')),
+        );
+      }
+    } finally {
+      setState(() => _isLoading = false);
     }
   }
 }
