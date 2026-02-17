@@ -13,7 +13,6 @@ import 'data/database/database_helper.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Inicializar databaseFactory para escritorio
   initializeDatabaseFactory();
   
   final prefs = await SharedPreferences.getInstance();
