@@ -50,7 +50,7 @@ class CardManagementScreen extends ConsumerWidget {
                           ),
                         ),
                         title: Text(tarjeta.nombre),
-                        subtitle: Text('${tarjeta.banco} - ${usuario?.nombre ?? 'N/A'}'),
+                        subtitle: Text(usuario?.nombre ?? 'N/A'),
                         trailing: Text(tarjeta.tipo == 'credito' ? 'Crédito' : 'Débito'),
                         onTap: () => context.push('/edit_card/${tarjeta.id}'),
                       ),

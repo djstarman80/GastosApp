@@ -311,7 +311,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         child: const Icon(Icons.credit_card, color: Colors.white),
                       ),
                       title: Text(tarjeta?.nombre ?? 'Tarjeta ${entry.key}'),
-                      subtitle: Text(tarjeta?.banco ?? ''),
                       trailing: Text(
                         CurrencyFormatter.format(entry.value),
                         style: const TextStyle(

@@ -13,7 +13,6 @@ class AddCardScreen extends ConsumerStatefulWidget {
 class _AddCardScreenState extends ConsumerState<AddCardScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nombreController = TextEditingController();
-  final _bancoController = TextEditingController();
   final _limiteController = TextEditingController();
   
   String _tipo = 'credito';
@@ -28,7 +27,6 @@ class _AddCardScreenState extends ConsumerState<AddCardScreen> {
   @override
   void dispose() {
     _nombreController.dispose();
-    _bancoController.dispose();
     _limiteController.dispose();
     super.dispose();
   }
@@ -42,17 +40,17 @@ class _AddCardScreenState extends ConsumerState<AddCardScreen> {
       return;
     }
 
-    final limite = double.tryParse(_limiteController.text);
+    final limite = _tipo == 'credito' ? double.tryParse(_limiteController.text) : null;
 
     await ref.read(tarjetaProvider.notifier).addTarjeta(
       tipo: _tipo,
       nombre: _nombreController.text,
-      banco: _bancoController.text,
+      banco: '', // Se quita el campo banco
       nombreTarjeta: _nombreTarjeta,
       color: _color,
       limite: limite,
       usuarioId: _selectedUsuarioId,
-      fechaCierre: _fechaCierre,
+      fechaCierre: _tipo == 'credito' ? _fechaCierre : null,
     );
 
     if (mounted) {
@@ -96,12 +94,6 @@ class _AddCardScreenState extends ConsumerState<AddCardScreen> {
               validator: (v) => v?.isEmpty ?? true ? 'Requerido' : null,
             ),
             const SizedBox(height: 16),
-            TextFormField(
-              controller: _bancoController,
-              decoration: const InputDecoration(labelText: 'Banco'),
-              validator: (v) => v?.isEmpty ?? true ? 'Requerido' : null,
-            ),
-            const SizedBox(height: 16),
             DropdownButtonFormField<String>(
               value: _nombreTarjeta,
               decoration: const InputDecoration(labelText: 'Tipo'),
@@ -109,24 +101,25 @@ class _AddCardScreenState extends ConsumerState<AddCardScreen> {
               onChanged: (value) => setState(() => _nombreTarjeta = value!),
             ),
             const SizedBox(height: 16),
-            DropdownButtonFormField<int>(
-              value: _fechaCierre,
-              decoration: const InputDecoration(
-                labelText: 'Día de Cierre',
-                helperText: 'Día del mes (1-12)',
+            if (_tipo == 'credito') ...[
+              DropdownButtonFormField<int>(
+                value: _fechaCierre,
+                decoration: const InputDecoration(
+                  labelText: 'Día de Cierre',
+                  helperText: 'Día del mes (1-31)',
+                ),
+                items: List.generate(31, (i) => i + 1).map((d) => DropdownMenuItem(value: d, child: Text('$d'))).toList(),
+                onChanged: (value) => setState(() => _fechaCierre = value ?? 1),
+                validator: (value) => value == null ? 'Requerido' : null,
               ),
-              items: List.generate(12, (i) => i + 1).map((d) => DropdownMenuItem(value: d, child: Text('$d'))).toList(),
-              onChanged: (value) => setState(() => _fechaCierre = value ?? 1),
-              validator: (value) => value == null ? 'Requerido' : null,
-            ),
-            const SizedBox(height: 16),
-            if (_tipo == 'credito')
+              const SizedBox(height: 16),
               TextFormField(
                 controller: _limiteController,
                 keyboardType: TextInputType.number,
                 decoration: const InputDecoration(labelText: 'Límite', prefixText: '\$ '),
               ),
-            const SizedBox(height: 16),
+              const SizedBox(height: 16),
+            ],
             DropdownButtonFormField<int>(
               value: _selectedUsuarioId == 0 ? null : _selectedUsuarioId,
               decoration: const InputDecoration(labelText: 'Usuario'),

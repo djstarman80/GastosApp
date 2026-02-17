@@ -139,7 +139,7 @@ class _ExpenseManagementScreenState extends ConsumerState<ExpenseManagementScree
                       ...tarjetasFiltradas.map((t) {
                         return DropdownMenuItem(
                           value: t.id,
-                          child: Text('${t.nombre} - ${t.banco}'),
+                          child: Text(t.nombre),
                         );
                       }),
                     ],

@@ -16,7 +16,7 @@ class EditCardScreen extends ConsumerStatefulWidget {
 class _EditCardScreenState extends ConsumerState<EditCardScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nombreController = TextEditingController();
-  final _bancoController = TextEditingController();
+  final _limiteController = TextEditingController();
   
   String _tipo = 'credito';
   String _nombreTarjeta = 'Visa';
@@ -24,6 +24,9 @@ class _EditCardScreenState extends ConsumerState<EditCardScreen> {
   int? _selectedUsuarioId;
   int _fechaCierre = 1;
   bool _isLoading = true;
+
+  final List<String> _nombrees = ['Visa', 'Mastercard', 'American Express', 'Otra'];
+  final List<String> _colores = ['#2196F3', '#4CAF50', '#FF9800', '#E91E63', '#9C27B0', '#795548'];
 
   @override
   void initState() {
@@ -34,7 +37,7 @@ class _EditCardScreenState extends ConsumerState<EditCardScreen> {
   Future<void> _loadTarjeta() async {
     final tarjeta = await ref.read(tarjetaRepositoryProvider).getById(widget.tarjetaId);
     _nombreController.text = tarjeta.nombre;
-    _bancoController.text = tarjeta.banco;
+    _limiteController.text = tarjeta.limite?.toString() ?? '';
     _tipo = tarjeta.tipo;
     _nombreTarjeta = tarjeta.nombreTarjeta;
     _color = tarjeta.color;
@@ -46,7 +49,7 @@ class _EditCardScreenState extends ConsumerState<EditCardScreen> {
   @override
   void dispose() {
     _nombreController.dispose();
-    _bancoController.dispose();
+    _limiteController.dispose();
     super.dispose();
   }
 
@@ -64,12 +67,13 @@ class _EditCardScreenState extends ConsumerState<EditCardScreen> {
     final tarjeta = await ref.read(tarjetaRepositoryProvider).getById(widget.tarjetaId);
     final updatedTarjeta = tarjeta.copyWith(
       nombre: _nombreController.text,
-      banco: _bancoController.text,
+      banco: '', // Se quita el campo banco
       tipo: _tipo,
       nombreTarjeta: _nombreTarjeta,
       color: _color,
       usuarioId: _selectedUsuarioId,
-      fechaCierre: _fechaCierre,
+      limite: _tipo == 'credito' ? double.tryParse(_limiteController.text) : null,
+      fechaCierre: _tipo == 'credito' ? _fechaCierre : null,
     );
 
     await ref.read(tarjetaProvider.notifier).updateTarjeta(updatedTarjeta);
@@ -122,19 +126,63 @@ class _EditCardScreenState extends ConsumerState<EditCardScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            DropdownButtonFormField<String>(
+              value: _tipo,
+              decoration: const InputDecoration(labelText: 'Tipo de Tarjeta'),
+              items: const [
+                DropdownMenuItem(value: 'credito', child: Text('Crédito')),
+                DropdownMenuItem(value: 'debito', child: Text('Débito')),
+              ],
+              onChanged: (value) => setState(() => _tipo = value!),
+            ),
+            const SizedBox(height: 16),
             TextFormField(controller: _nombreController, decoration: const InputDecoration(labelText: 'Nombre'), validator: (v) => v?.isEmpty ?? true ? 'Requerido' : null),
             const SizedBox(height: 16),
-            TextFormField(controller: _bancoController, decoration: const InputDecoration(labelText: 'Banco'), validator: (v) => v?.isEmpty ?? true ? 'Requerido' : null),
+            DropdownButtonFormField<String>(
+              value: _nombreTarjeta,
+              decoration: const InputDecoration(labelText: 'Tipo'),
+              items: _nombrees.map((b) => DropdownMenuItem(value: b, child: Text(b))).toList(),
+              onChanged: (value) => setState(() => _nombreTarjeta = value!),
+            ),
             const SizedBox(height: 16),
-            DropdownButtonFormField<int>(
-              value: _fechaCierre,
-              decoration: const InputDecoration(
-                labelText: 'Día de Cierre',
-                helperText: 'Día del mes (1-12)',
+            if (_tipo == 'credito') ...[
+              DropdownButtonFormField<int>(
+                value: _fechaCierre,
+                decoration: const InputDecoration(
+                  labelText: 'Día de Cierre',
+                  helperText: 'Día del mes (1-31)',
+                ),
+                items: List.generate(31, (i) => i + 1).map((d) => DropdownMenuItem(value: d, child: Text('$d'))).toList(),
+                onChanged: (value) => setState(() => _fechaCierre = value ?? 1),
+                validator: (value) => value == null ? 'Requerido' : null,
               ),
-              items: List.generate(12, (i) => i + 1).map((d) => DropdownMenuItem(value: d, child: Text('$d'))).toList(),
-              onChanged: (value) => setState(() => _fechaCierre = value ?? 1),
-              validator: (value) => value == null ? 'Requerido' : null,
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _limiteController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(labelText: 'Límite', prefixText: '\$ '),
+              ),
+              const SizedBox(height: 16),
+            ],
+            const Text('Color'),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              children: _colores.map((c) {
+                final color = Color(int.parse(c.replaceFirst('#', '0xFF')));
+                return GestureDetector(
+                  onTap: () => setState(() => _color = c),
+                  child: Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: color,
+                      shape: BoxShape.circle,
+                      border: _color == c ? Border.all(color: Colors.black, width: 3) : null,
+                    ),
+                  ),
+                );
+              }).toList(),
             ),
             const SizedBox(height: 32),
             ElevatedButton(onPressed: _updateTarjeta, child: const Text('Actualizar')),

@@ -159,7 +159,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                     .map((t) {
                   return DropdownMenuItem(
                     value: t.id,
-                    child: Text('${t.nombre} - ${t.banco}'),
+                    child: Text(t.nombre),
                   );
                 }).toList(),
                 onChanged: (value) {
