@@ -8,10 +8,14 @@ void initializeDatabaseFactory() {}
 class DatabaseHelper {
   static final DatabaseHelper _instance = DatabaseHelper._internal();
   static Database? _database;
-  static final WebDatabaseImpl? _webDb = kIsWeb ? WebDatabaseImpl() : null;
+  static WebDatabaseImpl? _webDb;
 
   factory DatabaseHelper() => _instance;
-  DatabaseHelper._internal();
+  DatabaseHelper._internal() {
+    if (kIsWeb && _webDb == null) {
+      _webDb = WebDatabaseImpl();
+    }
+  }
 
   bool get isWeb => kIsWeb;
 
@@ -73,30 +77,49 @@ class DatabaseHelper {
 }
 
 class WebDatabaseImpl {
-  static final Map<String, List<Map<String, dynamic>>> _tables = {
-    'usuarios': [],
-    'tarjetas': [],
-    'gastos': [],
-  };
-  static int _idUsuarios = 1;
-  static int _idTarjetas = 1;
-  static int _idGastos = 1;
+  static final Map<String, List<Map<String, dynamic>>> _tables = {};
+  static int _nextIdUsuario = 1;
+  static int _nextIdTarjeta = 1;
+  static int _nextIdGasto = 1;
 
-  List<Map<String, dynamic>> query(String table, {String? where, List<dynamic>? whereArgs}) {
-    if (!_tables.containsKey(table)) return [];
+  WebDatabaseImpl() {
+    _tables['usuarios'] = [];
+    _tables['tarjetas'] = [];
+    _tables['gastos'] = [];
+  }
+
+  List<Map<String, dynamic>> query(String table, {String? where, List<dynamic>? whereArgs, String? orderBy}) {
+    if (!_tables.containsKey(table)) {
+      _tables[table] = [];
+    }
     
     var results = List<Map<String, dynamic>>.from(_tables[table]!);
     
     if (where != null && whereArgs != null && whereArgs.isNotEmpty) {
+      final whereClean = where.replaceAll(' ', '');
       results = results.where((row) {
-        if (where.contains('=')) {
-          final parts = where.split('=');
-          final column = parts[0].trim();
+        if (whereClean.contains('=')) {
+          final parts = whereClean.split('=');
+          final column = parts[0].toLowerCase();
           final value = whereArgs[0];
-          return row[column] == value;
+          final rowValue = row[column];
+          return rowValue == value;
         }
         return true;
       }).toList();
+    }
+    
+    if (orderBy != null && orderBy.isNotEmpty) {
+      final orderColumn = orderBy.replaceAll('DESC', '').replaceAll('ASC', '').trim().toLowerCase();
+      final descending = orderBy.toUpperCase().contains('DESC');
+      results.sort((a, b) {
+        final aVal = a[orderColumn] ?? 0;
+        final bVal = b[orderColumn] ?? 0;
+        if (aVal is Comparable && bVal is Comparable) {
+          return descending ? bVal.compareTo(aVal) : aVal.compareTo(bVal);
+        }
+        return 0;
+      });
     }
     
     return results;
@@ -107,22 +130,27 @@ class WebDatabaseImpl {
       _tables[table] = [];
     }
     
+    final normalizedValues = <String, dynamic>{};
+    values.forEach((key, value) {
+      normalizedValues[key.toLowerCase()] = value;
+    });
+    
     int id;
-    switch (table) {
+    switch (table.toLowerCase()) {
       case 'usuarios':
-        id = _idUsuarios++;
+        id = _nextIdUsuario++;
         break;
       case 'tarjetas':
-        id = _idTarjetas++;
+        id = _nextIdTarjeta++;
         break;
       case 'gastos':
-        id = _idGastos++;
+        id = _nextIdGasto++;
         break;
       default:
-        id = _tables[table]!.length + 1;
+        id = (_tables[table]?.isEmpty ?? true) ? 1 : _tables[table]!.map((e) => (e['id'] as num?)?.toInt() ?? 0).reduce((a, b) => a > b ? a : b) + 1;
     }
     
-    final newRow = {...values, 'id': id};
+    final newRow = {...normalizedValues, 'id': id};
     _tables[table]!.add(newRow);
     return id;
   }
@@ -130,20 +158,27 @@ class WebDatabaseImpl {
   int update(String table, Map<String, dynamic> values, {String? where, List<dynamic>? whereArgs}) {
     if (!_tables.containsKey(table)) return 0;
     
+    final normalizedValues = <String, dynamic>{};
+    values.forEach((key, value) {
+      normalizedValues[key.toLowerCase()] = value;
+    });
+    
     int count = 0;
+    final whereClean = where?.replaceAll(' ', '') ?? '';
+    
     for (int i = 0; i < _tables[table]!.length; i++) {
       bool matches = true;
-      if (where != null && whereArgs != null && whereArgs.isNotEmpty) {
-        if (where.contains('=')) {
-          final parts = where.split('=');
-          final column = parts[0].trim();
+      if (whereClean.isNotEmpty && whereArgs != null && whereArgs.isNotEmpty) {
+        if (whereClean.contains('=')) {
+          final parts = whereClean.split('=');
+          final column = parts[0].toLowerCase();
           final value = whereArgs[0];
           matches = _tables[table]![i][column] == value;
         }
       }
       
       if (matches) {
-        _tables[table]![i] = {..._tables[table]![i], ...values};
+        _tables[table]![i] = {..._tables[table]![i], ...normalizedValues};
         count++;
       }
     }
@@ -154,12 +189,14 @@ class WebDatabaseImpl {
     if (!_tables.containsKey(table)) return 0;
     
     final toRemove = <int>[];
+    final whereClean = where?.replaceAll(' ', '') ?? '';
+    
     for (int i = 0; i < _tables[table]!.length; i++) {
       bool shouldDelete = false;
-      if (where != null && whereArgs != null && whereArgs.isNotEmpty) {
-        if (where.contains('=')) {
-          final parts = where.split('=');
-          final column = parts[0].trim();
+      if (whereClean.isNotEmpty && whereArgs != null && whereArgs.isNotEmpty) {
+        if (whereClean.contains('=')) {
+          final parts = whereClean.split('=');
+          final column = parts[0].toLowerCase();
           final value = whereArgs[0];
           shouldDelete = _tables[table]![i][column] == value;
         }
@@ -186,17 +223,17 @@ class WebDatabaseImpl {
     _tables['tarjetas'] = List<Map<String, dynamic>>.from(data['tarjetas'] ?? []);
     _tables['gastos'] = List<Map<String, dynamic>>.from(data['gastos'] ?? []);
     
-    _idUsuarios = (_tables['usuarios']!.isEmpty ? 0 : _tables['usuarios']!.map((e) => e['id'] as int).reduce((a, b) => a > b ? a : b)) + 1;
-    _idTarjetas = (_tables['tarjetas']!.isEmpty ? 0 : _tables['tarjetas']!.map((e) => e['id'] as int).reduce((a, b) => a > b ? a : b)) + 1;
-    _idGastos = (_tables['gastos']!.isEmpty ? 0 : _tables['gastos']!.map((e) => e['id'] as int).reduce((a, b) => a > b ? a : b)) + 1;
+    _nextIdUsuario = (_tables['usuarios']!.isEmpty ? 0 : _tables['usuarios']!.map((e) => (e['id'] as num?)?.toInt() ?? 0).reduce((a, b) => a > b ? a : b)) + 1;
+    _nextIdTarjeta = (_tables['tarjetas']!.isEmpty ? 0 : _tables['tarjetas']!.map((e) => (e['id'] as num?)?.toInt() ?? 0).reduce((a, b) => a > b ? a : b)) + 1;
+    _nextIdGasto = (_tables['gastos']!.isEmpty ? 0 : _tables['gastos']!.map((e) => (e['id'] as num?)?.toInt() ?? 0).reduce((a, b) => a > b ? a : b)) + 1;
   }
 
   void clear() {
     _tables['usuarios'] = [];
     _tables['tarjetas'] = [];
     _tables['gastos'] = [];
-    _idUsuarios = 1;
-    _idTarjetas = 1;
-    _idGastos = 1;
+    _nextIdUsuario = 1;
+    _nextIdTarjeta = 1;
+    _nextIdGasto = 1;
   }
 }
