@@ -56,8 +56,22 @@ class AboutScreen extends StatelessWidget {
           const Text('• Material Design 3'),
           const SizedBox(height: 24),
           const Text(
-            'Migrado desde Android (Kotlin/Jetpack Compose)',
-            style: TextStyle(color: Colors.grey),
+            'Desarrollado por',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Marcelo Pereyra',
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Soporte',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'lm.marcelo@gmail.com',
             textAlign: TextAlign.center,
           ),
         ],
