@@ -68,7 +68,7 @@ class BackupService {
     if (replace) {
       if (isWeb) {
         final webDb = db as WebDatabaseImpl;
-        webDb.clear();
+        await webDb.clear();
       } else {
         await db.delete('gastos');
         await db.delete('tarjetas');
@@ -81,7 +81,7 @@ class BackupService {
     for (final usuario in backup.usuarios) {
       if (isWeb) {
         final webDb = db as WebDatabaseImpl;
-        final newId = webDb.insert('usuarios', {'nombre': usuario.nombre});
+        final newId = await webDb.insert('usuarios', {'nombre': usuario.nombre});
         usuarioIdMap[usuario.id] = newId;
       } else {
         final newId = await db.insert('usuarios', {'nombre': usuario.nombre});
@@ -97,7 +97,7 @@ class BackupService {
       if (newUsuarioId != null) {
         if (isWeb) {
           final webDb = db as WebDatabaseImpl;
-          final newId = webDb.insert('tarjetas', {
+          final newId = await webDb.insert('tarjetas', {
             'tipo': tarjeta.tipo,
             'nombre': tarjeta.nombre,
             'banco': tarjeta.banco,
@@ -134,7 +134,7 @@ class BackupService {
       if (newUsuarioId != null && newTarjetaId != null) {
         if (isWeb) {
           final webDb = db as WebDatabaseImpl;
-          webDb.insert('gastos', {
+          await webDb.insert('gastos', {
             'monto': gasto.monto,
             'descripcion': gasto.descripcion,
             'tarjeta_id': newTarjetaId,

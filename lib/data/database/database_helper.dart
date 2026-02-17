@@ -1,7 +1,9 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void initializeDatabaseFactory() {}
 
@@ -83,6 +85,8 @@ class WebDatabaseImpl {
   int _nextIdUsuario = 1;
   int _nextIdTarjeta = 1;
   int _nextIdGasto = 1;
+  static const String _storageKey = 'gastosapp_db';
+  SharedPreferences? _prefs;
 
   Future<void> init() async {
     if (_initialized) return;
@@ -90,6 +94,30 @@ class WebDatabaseImpl {
     _tables['usuarios'] = [];
     _tables['tarjetas'] = [];
     _tables['gastos'] = [];
+    
+    if (kIsWeb) {
+      _prefs = await SharedPreferences.getInstance();
+      await _loadFromStorage();
+    }
+  }
+
+  Future<void> _loadFromStorage() async {
+    if (_prefs == null) return;
+    try {
+      final data = _prefs!.getString(_storageKey);
+      if (data != null && data.isNotEmpty) {
+        final Map<String, dynamic> parsed = jsonDecode(data);
+        _tables['usuarios'] = List<Map<String, dynamic>>.from(parsed['usuarios'] ?? []);
+        _tables['tarjetas'] = List<Map<String, dynamic>>.from(parsed['tarjetas'] ?? []);
+        _tables['gastos'] = List<Map<String, dynamic>>.from(parsed['gastos'] ?? []);
+        
+        _nextIdUsuario = _getMaxId(_tables['usuarios']!) + 1;
+        _nextIdTarjeta = _getMaxId(_tables['tarjetas']!) + 1;
+        _nextIdGasto = _getMaxId(_tables['gastos']!) + 1;
+      }
+    } catch (e) {
+      debugPrint('Error loading from storage: $e');
+    }
   }
 
   int _getMaxId(List<Map<String, dynamic>> table) {
@@ -102,6 +130,20 @@ class WebDatabaseImpl {
       }
     }
     return maxId;
+  }
+
+  Future<void> _saveToStorage() async {
+    if (_prefs == null) return;
+    try {
+      final data = jsonEncode({
+        'usuarios': _tables['usuarios'],
+        'tarjetas': _tables['tarjetas'],
+        'gastos': _tables['gastos'],
+      });
+      await _prefs!.setString(_storageKey, data);
+    } catch (e) {
+      debugPrint('Save storage error: $e');
+    }
   }
 
   List<Map<String, dynamic>> query(String table, {String? where, List<dynamic>? whereArgs, String? orderBy}) {
@@ -141,7 +183,7 @@ class WebDatabaseImpl {
     return results;
   }
 
-  int insert(String table, Map<String, dynamic> values) {
+  Future<int> insert(String table, Map<String, dynamic> values) async {
     if (!_tables.containsKey(table)) {
       _tables[table] = [];
     }
@@ -168,10 +210,11 @@ class WebDatabaseImpl {
     
     final newRow = {...normalizedValues, 'id': id};
     _tables[table]!.add(newRow);
+    await _saveToStorage();
     return id;
   }
 
-  int update(String table, Map<String, dynamic> values, {String? where, List<dynamic>? whereArgs}) {
+  Future<int> update(String table, Map<String, dynamic> values, {String? where, List<dynamic>? whereArgs}) async {
     if (!_tables.containsKey(table)) return 0;
     
     final normalizedValues = <String, dynamic>{};
@@ -198,10 +241,11 @@ class WebDatabaseImpl {
         count++;
       }
     }
+    if (count > 0) await _saveToStorage();
     return count;
   }
 
-  int delete(String table, {String? where, List<dynamic>? whereArgs}) {
+  Future<int> delete(String table, {String? where, List<dynamic>? whereArgs}) async {
     if (!_tables.containsKey(table)) return 0;
     
     final toRemove = <int>[];
@@ -223,6 +267,7 @@ class WebDatabaseImpl {
     for (int i = toRemove.length - 1; i >= 0; i--) {
       _tables[table]!.removeAt(toRemove[i]);
     }
+    if (toRemove.isNotEmpty) await _saveToStorage();
     return toRemove.length;
   }
 
@@ -234,7 +279,7 @@ class WebDatabaseImpl {
     };
   }
 
-  void importData(Map<String, dynamic> data) {
+  Future<void> importData(Map<String, dynamic> data) async {
     _tables['usuarios'] = List<Map<String, dynamic>>.from(data['usuarios'] ?? []);
     _tables['tarjetas'] = List<Map<String, dynamic>>.from(data['tarjetas'] ?? []);
     _tables['gastos'] = List<Map<String, dynamic>>.from(data['gastos'] ?? []);
@@ -242,14 +287,17 @@ class WebDatabaseImpl {
     _nextIdUsuario = _getMaxId(_tables['usuarios']!) + 1;
     _nextIdTarjeta = _getMaxId(_tables['tarjetas']!) + 1;
     _nextIdGasto = _getMaxId(_tables['gastos']!) + 1;
+    
+    await _saveToStorage();
   }
 
-  void clear() {
+  Future<void> clear() async {
     _tables['usuarios'] = [];
     _tables['tarjetas'] = [];
     _tables['gastos'] = [];
     _nextIdUsuario = 1;
     _nextIdTarjeta = 1;
     _nextIdGasto = 1;
+    await _saveToStorage();
   }
 }
