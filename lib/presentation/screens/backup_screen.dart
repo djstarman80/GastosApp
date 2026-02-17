@@ -1,10 +1,7 @@
-import 'dart:io';
+import 'dart:html' as html;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:file_picker/file_picker.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:share_plus/share_plus.dart';
 import '../providers/providers.dart';
 import '../../data/services/backup_service.dart';
 
@@ -24,14 +21,12 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
     try {
       final json = await _backupService.exportToJson();
       
-      final directory = await getApplicationDocumentsDirectory();
-      final timestamp = DateTime.now().toIso8601String().replaceAll(':', '-');
-      final filePath = '${directory.path}/backup_$timestamp.json';
-      
-      final file = File(filePath);
-      await file.writeAsString(json);
-      
-      await Share.shareXFiles([XFile(filePath)], text: 'Backup GastosApp');
+      final blob = html.Blob([json], 'application/json');
+      final url = html.Url.createObjectUrlFromBlob(blob);
+      final anchor = html.AnchorElement(href: url)
+        ..setAttribute('download', 'backup_gastosapp_${DateTime.now().toIso8601String()}.json')
+        ..click();
+      html.Url.revokeObjectUrl(url);
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -50,15 +45,19 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
   }
 
   Future<void> _importData() async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['json'],
-    );
+    final input = html.FileUploadInputElement();
+    input.accept = '.json';
+    input.click();
 
-    if (result == null || result.files.isEmpty) return;
+    await input.onChange.first;
+    final file = input.files?.first;
+    if (file == null) return;
 
-    final filePath = result.files.single.path;
-    if (filePath == null) return;
+    final reader = html.FileReader();
+    reader.readAsText(file);
+    await reader.onLoad.first;
+
+    final jsonString = reader.result as String;
 
     final confirmReplace = await showDialog<bool>(
       context: context,
@@ -90,9 +89,8 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
 
     setState(() => _isLoading = true);
     try {
-      await _backupService.importFromFile(filePath, replace: confirmReplace);
+      await _backupService.importData(jsonString, replace: confirmReplace);
       
-      // Recargar datos
       await ref.read(usuarioProvider.notifier).loadUsuarios();
       await ref.read(tarjetaProvider.notifier).loadTarjetas();
       await ref.read(gastoProvider.notifier).loadGastos();
