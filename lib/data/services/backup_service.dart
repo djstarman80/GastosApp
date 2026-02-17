@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 import '../models/models.dart';
@@ -63,14 +64,75 @@ class BackupService {
     
     final db = await _db.database;
     
+    // Usar métodos directos para web
+    if (kIsWeb) {
+      final webDb = db as WebDatabaseImpl;
+      
+      if (replace) {
+        webDb.clear();
+      }
+      
+      // Importar usuarios
+      final usuarioIdMap = <int, int>{};
+      for (final usuario in backup.usuarios) {
+        final newId = webDb.insert('usuarios', {
+          'nombre': usuario.nombre,
+        });
+        usuarioIdMap[usuario.id] = newId;
+      }
+      
+      // Importar tarjetas
+      final tarjetaIdMap = <int, int>{};
+      for (final tarjeta in backup.tarjetas) {
+        final oldUsuarioId = tarjeta.usuarioId;
+        final newUsuarioId = usuarioIdMap[oldUsuarioId];
+        if (newUsuarioId != null) {
+          final newId = webDb.insert('tarjetas', {
+            'tipo': tarjeta.tipo,
+            'nombre': tarjeta.nombre,
+            'banco': tarjeta.banco,
+            'nombre_tarjeta': tarjeta.nombreTarjeta,
+            'color': tarjeta.color,
+            'limite': tarjeta.limite,
+            'usuario_id': newUsuarioId,
+            'fecha_cierre': tarjeta.fechaCierre,
+          });
+          tarjetaIdMap[tarjeta.id] = newId;
+        }
+      }
+      
+      // Importar gastos
+      for (final gasto in backup.gastos) {
+        final oldUsuarioId = gasto.usuarioId;
+        final oldTarjetaId = gasto.tarjetaId;
+        final newUsuarioId = usuarioIdMap[oldUsuarioId];
+        final newTarjetaId = tarjetaIdMap[oldTarjetaId];
+        
+        if (newUsuarioId != null && newTarjetaId != null) {
+          webDb.insert('gastos', {
+            'monto': gasto.monto,
+            'descripcion': gasto.descripcion,
+            'tarjeta_id': newTarjetaId,
+            'usuario_id': newUsuarioId,
+            'cuotas': gasto.cuotas,
+            'es_recurrente': gasto.esRecurrente ? 1 : 0,
+            'fecha': gasto.fecha,
+            'fecha_pago': gasto.fechaPago,
+            'pagado': gasto.pagado ? 1 : 0,
+          });
+        }
+      }
+      return;
+    }
+    
+    // Código original para SQLite (móvil/escritorio)
     if (replace) {
       await db.delete('gastos');
       await db.delete('tarjetas');
       await db.delete('usuarios');
     }
     
-    // Importar usuarios (crear nuevos con IDs nuevos)
-    final usuarioIdMap = <int, int>{}; // oldId -> newId
+    final usuarioIdMap = <int, int>{};
     for (final usuario in backup.usuarios) {
       final newId = await db.insert('usuarios', {
         'nombre': usuario.nombre,
@@ -78,8 +140,7 @@ class BackupService {
       usuarioIdMap[usuario.id] = newId;
     }
     
-    // Importar tarjetas (crear nuevas con IDs nuevos)
-    final tarjetaIdMap = <int, int>{}; // oldId -> newId
+    final tarjetaIdMap = <int, int>{};
     for (final tarjeta in backup.tarjetas) {
       final oldUsuarioId = tarjeta.usuarioId;
       final newUsuarioId = usuarioIdMap[oldUsuarioId];
@@ -98,7 +159,6 @@ class BackupService {
       }
     }
     
-    // Importar gastos (crear nuevos con IDs nuevos)
     for (final gasto in backup.gastos) {
       final oldUsuarioId = gasto.usuarioId;
       final oldTarjetaId = gasto.tarjetaId;
