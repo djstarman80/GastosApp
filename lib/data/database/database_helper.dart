@@ -21,6 +21,7 @@ class DatabaseHelper {
 
   Future<dynamic> get database async {
     if (kIsWeb) {
+      await _webDb!.init();
       return _webDb!;
     }
     if (_database != null) return _database!;
@@ -77,15 +78,30 @@ class DatabaseHelper {
 }
 
 class WebDatabaseImpl {
-  static final Map<String, List<Map<String, dynamic>>> _tables = {};
-  static int _nextIdUsuario = 1;
-  static int _nextIdTarjeta = 1;
-  static int _nextIdGasto = 1;
+  bool _initialized = false;
+  final Map<String, List<Map<String, dynamic>>> _tables = {};
+  int _nextIdUsuario = 1;
+  int _nextIdTarjeta = 1;
+  int _nextIdGasto = 1;
 
-  WebDatabaseImpl() {
+  Future<void> init() async {
+    if (_initialized) return;
+    _initialized = true;
     _tables['usuarios'] = [];
     _tables['tarjetas'] = [];
     _tables['gastos'] = [];
+  }
+
+  int _getMaxId(List<Map<String, dynamic>> table) {
+    if (table.isEmpty) return 0;
+    int maxId = 0;
+    for (var row in table) {
+      final id = row['id'];
+      if (id != null && id is num && id.toInt() > maxId) {
+        maxId = id.toInt();
+      }
+    }
+    return maxId;
   }
 
   List<Map<String, dynamic>> query(String table, {String? where, List<dynamic>? whereArgs, String? orderBy}) {
@@ -113,8 +129,8 @@ class WebDatabaseImpl {
       final orderColumn = orderBy.replaceAll('DESC', '').replaceAll('ASC', '').trim().toLowerCase();
       final descending = orderBy.toUpperCase().contains('DESC');
       results.sort((a, b) {
-        final aVal = a[orderColumn] ?? 0;
-        final bVal = b[orderColumn] ?? 0;
+        final aVal = a[orderColumn];
+        final bVal = b[orderColumn];
         if (aVal is Comparable && bVal is Comparable) {
           return descending ? bVal.compareTo(aVal) : aVal.compareTo(bVal);
         }
@@ -147,7 +163,7 @@ class WebDatabaseImpl {
         id = _nextIdGasto++;
         break;
       default:
-        id = (_tables[table]?.isEmpty ?? true) ? 1 : _tables[table]!.map((e) => (e['id'] as num?)?.toInt() ?? 0).reduce((a, b) => a > b ? a : b) + 1;
+        id = _getMaxId(_tables[table]!) + 1;
     }
     
     final newRow = {...normalizedValues, 'id': id};
@@ -223,9 +239,9 @@ class WebDatabaseImpl {
     _tables['tarjetas'] = List<Map<String, dynamic>>.from(data['tarjetas'] ?? []);
     _tables['gastos'] = List<Map<String, dynamic>>.from(data['gastos'] ?? []);
     
-    _nextIdUsuario = (_tables['usuarios']!.isEmpty ? 0 : _tables['usuarios']!.map((e) => (e['id'] as num?)?.toInt() ?? 0).reduce((a, b) => a > b ? a : b)) + 1;
-    _nextIdTarjeta = (_tables['tarjetas']!.isEmpty ? 0 : _tables['tarjetas']!.map((e) => (e['id'] as num?)?.toInt() ?? 0).reduce((a, b) => a > b ? a : b)) + 1;
-    _nextIdGasto = (_tables['gastos']!.isEmpty ? 0 : _tables['gastos']!.map((e) => (e['id'] as num?)?.toInt() ?? 0).reduce((a, b) => a > b ? a : b)) + 1;
+    _nextIdUsuario = _getMaxId(_tables['usuarios']!) + 1;
+    _nextIdTarjeta = _getMaxId(_tables['tarjetas']!) + 1;
+    _nextIdGasto = _getMaxId(_tables['gastos']!) + 1;
   }
 
   void clear() {
