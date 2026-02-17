@@ -43,6 +43,9 @@ class GastosApp extends ConsumerWidget {
       navigatorKey: GlobalKey<NavigatorState>(),
       initialLocation: initialLocation,
       routes: appRoutes,
+      errorBuilder: (context, state) => Scaffold(
+        body: Center(child: Text('Error: ${state.error}')),
+      ),
     );
     
     return MaterialApp.router(
