@@ -1,10 +1,11 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:path_provider/path_provider.dart';
-import 'dart:io';
 import '../models/models.dart';
 import '../models/backup_data.dart';
 import '../database/database_helper.dart';
+
+// Import condicional para plataformas no-web
+import 'dart:io' if (dart.library.html) 'backup_service_io_stub.dart';
 
 class BackupService {
   final DatabaseHelper _db = DatabaseHelper();

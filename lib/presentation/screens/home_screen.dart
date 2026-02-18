@@ -1,5 +1,5 @@
-import 'dart:html' as html;
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -8,6 +8,9 @@ import '../../core/utils/currency_formatter.dart';
 import '../../core/utils/cuota_utils.dart';
 import '../../data/models/models.dart';
 import '../../data/services/backup_service.dart';
+
+// Import condicional
+import 'home_screen_web.dart' if (dart.library.io) 'home_screen_stub.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -348,12 +351,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     try {
       final json = await _backupService.exportToJson();
       
-      final blob = html.Blob([json], 'application/json');
-      final url = html.Url.createObjectUrlFromBlob(blob);
-      final anchor = html.AnchorElement(href: url)
-        ..setAttribute('download', 'backup_gastosapp_${DateTime.now().toIso8601String()}.json')
-        ..click();
-      html.Url.revokeObjectUrl(url);
+      if (kIsWeb) {
+        downloadJson(json, 'backup_gastosapp_${DateTime.now().toIso8601String()}.json');
+      }
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -372,19 +372,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Future<void> _importData() async {
-    final input = html.FileUploadInputElement();
-    input.accept = '.json';
-    input.click();
-
-    await input.onChange.first;
-    final file = input.files?.first;
-    if (file == null) return;
-
-    final reader = html.FileReader();
-    reader.readAsText(file);
-    await reader.onLoad.first;
-
-    final jsonString = reader.result as String;
+    if (!kIsWeb) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Importar solo disponible en web')),
+        );
+      }
+      return;
+    }
+    
+    final jsonString = await uploadJson();
+    if (jsonString == null) return;
 
     final confirmReplace = await showDialog<bool>(
       context: context,

@@ -1,6 +1,2 @@
-import 'package:drift/drift.dart';
-
-class Usuarios extends Table {
-  IntColumn get id => integer().autoIncrement()();
-  TextColumn get nombre => text()();
-}
+// Reexporta desde models.dart para compatibilidad
+export 'models.dart';

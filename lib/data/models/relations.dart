@@ -1,4 +1,3 @@
-import 'package:drift/drift.dart';
 import '../models/models.dart';
 
 class GastosWithRelations {
