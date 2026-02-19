@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/providers.dart';
+import '../widgets/export_pdf_dialog.dart';
 
 class MoreScreen extends ConsumerWidget {
   const MoreScreen({super.key});
@@ -32,6 +33,12 @@ class MoreScreen extends ConsumerWidget {
             title: 'Administrar Tarjetas',
             subtitle: 'Gestionar tarjetas de crédito/débito',
             onTap: () => context.go('/card_management'),
+          ),
+          _MenuItem(
+            icon: Icons.picture_as_pdf,
+            title: 'Exportar a PDF',
+            subtitle: 'Generar resumen de gastos en PDF',
+            onTap: () => _showExportPdfDialog(context),
           ),
           const Divider(),
           _MenuItem(
@@ -84,6 +91,13 @@ class MoreScreen extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+
+  void _showExportPdfDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => const ExportPdfDialog(),
     );
   }
 }
