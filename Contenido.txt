@@ -1,0 +1,27 @@
+✅ Carpeta Fuente Creada
+| Archivo/Carpeta | Descripción |
+|-----------------|-------------|
+| lib/ | Codigo fuente Dart |
+| android/ | Proyecto Android |
+| windows/ | Proyecto Windows |
+| web/ | Proyecto Web |
+| ios/ | Proyecto iOS |
+| linux/ | Proyecto Linux |
+| macos/ | Proyecto macOS |
+| assets/ | Iconos e imagenes |
+| .github/workflows/ | Workflow GitHub Actions |
+| INSTRUCCIONES.md | Guia completa |
+| compilar.bat | Script compilacion local |
+| subir_github.bat | Script subir a GitHub |
+---
+📦 Respaldo Creado
+| Archivo | Tamaño |
+|---------|--------|
+| GastosApp_Respaldo_20260218.zip | 304 MB |
+---
+🔄 Para Restaurar despues de Reinstalar Windows
+1. Instalar Flutter SDK
+2. Instalar Visual Studio 2022 (para Windows)
+3. Instalar Android SDK + JDK 21 (para Android)
+4. Descomprimir GastosApp_Respaldo_20260218.zip
+5. Ejecutar compilar.bat o flutter pub get

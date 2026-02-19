@@ -6,6 +6,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import '../../data/models/models.dart';
+import 'cuota_utils.dart';
 
 enum PdfFilterType { todos, porUsuario, porTarjeta }
 
@@ -216,6 +217,8 @@ class PDFGenerator {
     final sortedGastos = List<Gasto>.from(gastos)
       ..sort((a, b) => b.fecha.compareTo(a.fecha));
 
+    final now = DateTime.now();
+
     String getUsuarioName(int usuarioId) {
       final usuario = usuarios.firstWhere(
         (u) => u.id == usuarioId,
@@ -224,20 +227,21 @@ class PDFGenerator {
       return usuario.nombre;
     }
 
+    Tarjeta? getTarjeta(int tarjetaId) {
+      try {
+        return tarjetas.firstWhere((t) => t.id == tarjetaId);
+      } catch (e) {
+        return null;
+      }
+    }
+
     String getTarjetaName(int tarjetaId) {
-      final tarjeta = tarjetas.firstWhere(
-        (t) => t.id == tarjetaId,
-        orElse: () => Tarjeta(
-          id: 0,
-          tipo: '',
-          nombre: 'Desconocida',
-          banco: '',
-          nombreTarjeta: '',
-          color: '#000000',
-          usuarioId: 0,
-        ),
-      );
-      return tarjeta.nombre;
+      final tarjeta = getTarjeta(tarjetaId);
+      return tarjeta?.nombre ?? 'Desconocida';
+    }
+
+    int? getFechaCierre(int tarjetaId) {
+      return getTarjeta(tarjetaId)?.fechaCierre;
     }
 
     String formatDate(int timestamp) {
@@ -247,6 +251,45 @@ class PDFGenerator {
       } catch (e) {
         return '-';
       }
+    }
+
+    String formatCuotas(Gasto gasto, int? fechaCierre) {
+      if (gasto.cuotas == null || gasto.cuotas == 0) {
+        return '-';
+      }
+      
+      final fechaGasto = DateTime.fromMillisecondsSinceEpoch(gasto.fecha);
+      final cuotasPagadas = CuotaUtils.calcularCuotasPagadas(
+        fechaGasto,
+        fechaCierre ?? 1,
+        gasto.cuotas!,
+        now.year,
+        now.month,
+      );
+      
+      return '$cuotasPagadas/${gasto.cuotas}';
+    }
+
+    String formatUltimaCuota(Gasto gasto, int? fechaCierre) {
+      if (gasto.cuotas == null || gasto.cuotas == 0) {
+        return '-';
+      }
+      
+      final fechaGasto = DateTime.fromMillisecondsSinceEpoch(gasto.fecha);
+      final fechaCierreReal = fechaCierre ?? 1;
+      
+      final mesInicio = CuotaUtils.calcularMesInicioCuotas(
+        fechaGasto, 
+        fechaCierreReal,
+      );
+      
+      final ultimaCuota = DateTime(
+        mesInicio.year,
+        mesInicio.month + gasto.cuotas! - 1,
+        fechaGasto.day,
+      );
+      
+      return dateFormat.format(ultimaCuota);
     }
 
     return pw.Column(
@@ -271,11 +314,13 @@ class PDFGenerator {
         pw.Table(
           border: pw.TableBorder.all(color: PdfColors.grey300),
           columnWidths: {
-            0: const pw.FlexColumnWidth(1.2),
-            1: const pw.FlexColumnWidth(1.5),
-            2: const pw.FlexColumnWidth(1.5),
-            3: const pw.FlexColumnWidth(2),
-            4: const pw.FlexColumnWidth(1.3),
+            0: const pw.FlexColumnWidth(1.0),
+            1: const pw.FlexColumnWidth(1.2),
+            2: const pw.FlexColumnWidth(1.2),
+            3: const pw.FlexColumnWidth(1.8),
+            4: const pw.FlexColumnWidth(1.0),
+            5: const pw.FlexColumnWidth(0.8),
+            6: const pw.FlexColumnWidth(1.0),
           },
           children: [
             pw.TableRow(
@@ -286,9 +331,12 @@ class PDFGenerator {
                 _buildHeaderCell('Tarjeta'),
                 _buildHeaderCell('Descripción'),
                 _buildHeaderCell('Monto'),
+                _buildHeaderCell('Cuotas'),
+                _buildHeaderCell('Última'),
               ],
             ),
             ...sortedGastos.map((gasto) {
+              final fechaCierre = getFechaCierre(gasto.tarjetaId);
               return pw.TableRow(
                 children: [
                   _buildCell(formatDate(gasto.fecha)),
@@ -296,6 +344,8 @@ class PDFGenerator {
                   _buildCell(getTarjetaName(gasto.tarjetaId)),
                   _buildCell(gasto.descripcion),
                   _buildCell(currencyFormat.format(gasto.monto)),
+                  _buildCell(formatCuotas(gasto, fechaCierre)),
+                  _buildCell(formatUltimaCuota(gasto, fechaCierre)),
                 ],
               );
             }).toList(),
