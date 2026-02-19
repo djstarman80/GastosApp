@@ -1,13 +1,15 @@
-import '../database/database_helper.dart';
 import '../models/models.dart';
+import '../services/json_storage.dart';
 
 class GastoRepository {
-  final DatabaseHelper _db = DatabaseHelper();
-
   Future<List<Gasto>> getAll() async {
-    final db = await _db.database;
-    final result = await db.query('gastos', orderBy: 'fecha DESC');
-    return result.map((map) => Gasto.fromMap(map)).toList();
+    final data = await JsonStorageService.load();
+    final gastosList = data['gastos'] as List<dynamic>? ?? [];
+    final gastos = gastosList
+        .map((g) => Gasto.fromJson(g as Map<String, dynamic>))
+        .toList();
+    gastos.sort((a, b) => b.fecha.compareTo(a.fecha));
+    return gastos;
   }
 
   Stream<List<Gasto>> watchAll() {
@@ -15,9 +17,8 @@ class GastoRepository {
   }
 
   Future<List<Gasto>> getByUsuario(int usuarioId) async {
-    final db = await _db.database;
-    final result = await db.query('gastos', where: 'usuario_id = ?', whereArgs: [usuarioId], orderBy: 'fecha DESC');
-    return result.map((map) => Gasto.fromMap(map)).toList();
+    final gastos = await getAll();
+    return gastos.where((g) => g.usuarioId == usuarioId).toList();
   }
 
   Stream<List<Gasto>> watchByUsuario(int usuarioId) {
@@ -25,21 +26,22 @@ class GastoRepository {
   }
 
   Future<List<Gasto>> getByTarjeta(int tarjetaId) async {
-    final db = await _db.database;
-    final result = await db.query('gastos', where: 'tarjeta_id = ?', whereArgs: [tarjetaId]);
-    return result.map((map) => Gasto.fromMap(map)).toList();
+    final gastos = await getAll();
+    return gastos.where((g) => g.tarjetaId == tarjetaId).toList();
   }
 
   Future<List<Gasto>> getByFechaRange(int startDate, int endDate) async {
-    final db = await _db.database;
-    final result = await db.query('gastos', where: 'fecha >= ? AND fecha <= ?', whereArgs: [startDate, endDate]);
-    return result.map((map) => Gasto.fromMap(map)).toList();
+    final gastos = await getAll();
+    return gastos.where((g) => g.fecha >= startDate && g.fecha <= endDate).toList();
   }
 
   Future<Gasto> getById(int id) async {
-    final db = await _db.database;
-    final result = await db.query('gastos', where: 'id = ?', whereArgs: [id]);
-    return Gasto.fromMap(result.first);
+    final gastos = await getAll();
+    try {
+      return gastos.firstWhere((g) => g.id == id);
+    } catch (e) {
+      throw Exception('Gasto no encontrado');
+    }
   }
 
   Future<int> create({
@@ -53,28 +55,59 @@ class GastoRepository {
     int? fechaPago,
     bool pagado = false,
   }) async {
-    final db = await _db.database;
-    return await db.insert('gastos', {
+    final data = await JsonStorageService.load();
+    final gastos = data['gastos'] as List;
+    final newId = gastos.isEmpty ? 1 : gastos.map((g) => g['id'] as int).reduce((a, b) => a > b ? a : b) + 1;
+    gastos.add({
+      'id': newId,
       'monto': monto,
       'descripcion': descripcion,
-      'tarjeta_id': tarjetaId,
-      'usuario_id': usuarioId,
+      'tarjetaId': tarjetaId,
+      'usuarioId': usuarioId,
       'cuotas': cuotas,
-      'es_recurrente': esRecurrente ? 1 : 0,
+      'esRecurrente': esRecurrente,
       'fecha': fecha,
-      'fecha_pago': fechaPago,
-      'pagado': pagado ? 1 : 0,
+      'fechaPago': fechaPago,
+      'pagado': pagado,
     });
+    await JsonStorageService.save(data);
+    return newId;
   }
 
   Future<int> update(Gasto gasto) async {
-    final db = await _db.database;
-    return await db.update('gastos', gasto.toMap(), where: 'id = ?', whereArgs: [gasto.id]);
+    final data = await JsonStorageService.load();
+    final gastos = data['gastos'] as List;
+    for (int i = 0; i < gastos.length; i++) {
+      if (gastos[i]['id'] == gasto.id) {
+        gastos[i] = {
+          'id': gasto.id,
+          'monto': gasto.monto,
+          'descripcion': gasto.descripcion,
+          'tarjetaId': gasto.tarjetaId,
+          'usuarioId': gasto.usuarioId,
+          'cuotas': gasto.cuotas,
+          'esRecurrente': gasto.esRecurrente,
+          'fecha': gasto.fecha,
+          'fechaPago': gasto.fechaPago,
+          'pagado': gasto.pagado,
+        };
+        await JsonStorageService.save(data);
+        return 1;
+      }
+    }
+    return 0;
   }
 
   Future<int> delete(int id) async {
-    final db = await _db.database;
-    return await db.delete('gastos', where: 'id = ?', whereArgs: [id]);
+    final data = await JsonStorageService.load();
+    final gastos = data['gastos'] as List;
+    final initialLength = gastos.length;
+    gastos.removeWhere((g) => g['id'] == id);
+    if (gastos.length != initialLength) {
+      await JsonStorageService.save(data);
+      return 1;
+    }
+    return 0;
   }
 
   Future<double> getTotalByUsuario(int usuarioId) async {

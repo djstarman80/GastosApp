@@ -1,26 +1,24 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
+import 'dart:io';
 import '../models/models.dart';
 import '../models/backup_data.dart';
-import '../database/database_helper.dart';
-
-// Import condicional para plataformas no-web
-import 'dart:io' if (dart.library.html) 'backup_service_io_stub.dart';
+import 'json_storage.dart';
 
 class BackupService {
-  final DatabaseHelper _db = DatabaseHelper();
-
   Future<String> exportToJson() async {
-    final db = await _db.database;
+    final data = await JsonStorageService.load();
     
-    final usuariosResult = await db.query('usuarios');
-    final usuarios = usuariosResult.map((m) => Usuario.fromMap(m)).toList();
+    final usuarios = (data['usuarios'] as List<dynamic>?)
+        ?.map((u) => Usuario.fromJson(u as Map<String, dynamic>))
+        .toList() ?? [];
     
-    final tarjetasResult = await db.query('tarjetas');
-    final tarjetas = tarjetasResult.map((m) => Tarjeta.fromMap(m)).toList();
+    final tarjetas = (data['tarjetas'] as List<dynamic>?)
+        ?.map((t) => Tarjeta.fromJson(t as Map<String, dynamic>))
+        .toList() ?? [];
     
-    final gastosResult = await db.query('gastos');
-    final gastos = gastosResult.map((m) => Gasto.fromMap(m)).toList();
+    final gastos = (data['gastos'] as List<dynamic>?)
+        ?.map((g) => Gasto.fromJson(g as Map<String, dynamic>))
+        .toList() ?? [];
     
     final backup = BackupData(
       usuarios: usuarios,
@@ -63,104 +61,76 @@ class BackupService {
       throw Exception('No se pudo parsear el backup');
     }
     
-    final db = await _db.database;
-    final isWeb = kIsWeb;
+    final data = replace ? <String, dynamic>{
+      'usuarios': <Map<String, dynamic>>[],
+      'tarjetas': <Map<String, dynamic>>[],
+      'gastos': <Map<String, dynamic>>[],
+    } : await JsonStorageService.load();
     
-    // Siempre清除 datos si replace=true
-    if (replace) {
-      if (isWeb) {
-        final webDb = db as WebDatabaseImpl;
-        await webDb.clear();
-      } else {
-        await db.delete('gastos');
-        await db.delete('tarjetas');
-        await db.delete('usuarios');
-      }
-    }
-    
-    // Importar usuarios - siempre generar nuevos IDs
     final usuarioIdMap = <int, int>{};
-    for (final usuario in backup.usuarios) {
-      if (isWeb) {
-        final webDb = db as WebDatabaseImpl;
-        final newId = await webDb.insert('usuarios', {'nombre': usuario.nombre});
-        usuarioIdMap[usuario.id] = newId;
-      } else {
-        final newId = await db.insert('usuarios', {'nombre': usuario.nombre});
-        usuarioIdMap[usuario.id] = newId;
-      }
+    final newUsuarioId = (data['usuarios'] as List).length + 1;
+    
+    for (int i = 0; i < backup.usuarios.length; i++) {
+      final usuario = backup.usuarios[i];
+      final newId = newUsuarioId + i;
+      usuarioIdMap[usuario.id] = newId;
+      (data['usuarios'] as List).add({
+        'id': newId,
+        'nombre': usuario.nombre,
+      });
     }
     
-    // Importar tarjetas - siempre generar nuevos IDs
+    final newTarjetaId = (data['tarjetas'] as List).length + 1;
     final tarjetaIdMap = <int, int>{};
-    for (final tarjeta in backup.tarjetas) {
+    
+    for (int i = 0; i < backup.tarjetas.length; i++) {
+      final tarjeta = backup.tarjetas[i];
       final oldUsuarioId = tarjeta.usuarioId;
-      final newUsuarioId = usuarioIdMap[oldUsuarioId];
-      if (newUsuarioId != null) {
-        if (isWeb) {
-          final webDb = db as WebDatabaseImpl;
-          final newId = await webDb.insert('tarjetas', {
-            'tipo': tarjeta.tipo,
-            'nombre': tarjeta.nombre,
-            'banco': tarjeta.banco,
-            'nombre_tarjeta': tarjeta.nombreTarjeta,
-            'color': tarjeta.color,
-            'limite': tarjeta.limite,
-            'usuario_id': newUsuarioId,
-            'fecha_cierre': tarjeta.fechaCierre,
-          });
-          tarjetaIdMap[tarjeta.id] = newId;
-        } else {
-          final newId = await db.insert('tarjetas', {
-            'tipo': tarjeta.tipo,
-            'nombre': tarjeta.nombre,
-            'banco': tarjeta.banco,
-            'nombre_tarjeta': tarjeta.nombreTarjeta,
-            'color': tarjeta.color,
-            'limite': tarjeta.limite,
-            'usuario_id': newUsuarioId,
-            'fecha_cierre': tarjeta.fechaCierre,
-          });
-          tarjetaIdMap[tarjeta.id] = newId;
-        }
+      final newUserId = usuarioIdMap[oldUsuarioId];
+      
+      if (newUserId != null) {
+        final newId = newTarjetaId + i;
+        tarjetaIdMap[tarjeta.id] = newId;
+        (data['tarjetas'] as List).add({
+          'id': newId,
+          'tipo': tarjeta.tipo,
+          'nombre': tarjeta.nombre,
+          'banco': tarjeta.banco,
+          'nombre_tarjeta': tarjeta.nombreTarjeta,
+          'color': tarjeta.color,
+          'limite': tarjeta.limite,
+          'usuarioId': newUserId,
+          'fechaCierre': tarjeta.fechaCierre,
+        });
       }
     }
     
-    // Importar gastos - siempre generar nuevos IDs
-    for (final gasto in backup.gastos) {
+    final newGastoId = (data['gastos'] as List).length + 1;
+    
+    for (int i = 0; i < backup.gastos.length; i++) {
+      final gasto = backup.gastos[i];
       final oldUsuarioId = gasto.usuarioId;
       final oldTarjetaId = gasto.tarjetaId;
-      final newUsuarioId = usuarioIdMap[oldUsuarioId];
-      final newTarjetaId = tarjetaIdMap[oldTarjetaId];
+      final newUserId = usuarioIdMap[oldUsuarioId];
+      final newTarjId = tarjetaIdMap[oldTarjetaId];
       
-      if (newUsuarioId != null && newTarjetaId != null) {
-        if (isWeb) {
-          final webDb = db as WebDatabaseImpl;
-          await webDb.insert('gastos', {
-            'monto': gasto.monto,
-            'descripcion': gasto.descripcion,
-            'tarjeta_id': newTarjetaId,
-            'usuario_id': newUsuarioId,
-            'cuotas': gasto.cuotas,
-            'es_recurrente': gasto.esRecurrente ? 1 : 0,
-            'fecha': gasto.fecha,
-            'fecha_pago': gasto.fechaPago,
-            'pagado': gasto.pagado ? 1 : 0,
-          });
-        } else {
-          await db.insert('gastos', {
-            'monto': gasto.monto,
-            'descripcion': gasto.descripcion,
-            'tarjeta_id': newTarjetaId,
-            'usuario_id': newUsuarioId,
-            'cuotas': gasto.cuotas,
-            'es_recurrente': gasto.esRecurrente ? 1 : 0,
-            'fecha': gasto.fecha,
-            'fecha_pago': gasto.fechaPago,
-            'pagado': gasto.pagado ? 1 : 0,
-          });
-        }
+      if (newUserId != null && newTarjId != null) {
+        final newId = newGastoId + i;
+        (data['gastos'] as List).add({
+          'id': newId,
+          'monto': gasto.monto,
+          'descripcion': gasto.descripcion,
+          'tarjetaId': newTarjId,
+          'usuarioId': newUserId,
+          'cuotas': gasto.cuotas,
+          'esRecurrente': gasto.esRecurrente,
+          'fecha': gasto.fecha,
+          'fechaPago': gasto.fechaPago,
+          'pagado': gasto.pagado,
+        });
       }
     }
+    
+    await JsonStorageService.save(data);
   }
 }

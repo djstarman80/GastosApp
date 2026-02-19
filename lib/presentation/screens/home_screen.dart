@@ -6,7 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:file_saver/file_saver.dart';
+import 'package:path_provider/path_provider.dart';
 import '../providers/providers.dart';
 import '../../core/utils/currency_formatter.dart';
 import '../../core/utils/cuota_utils.dart';
@@ -359,12 +359,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         downloadJson(json, 'backup_gastosapp_${DateTime.now().toIso8601String()}.json');
       } else {
         final bytes = Uint8List.fromList(json.codeUnits);
-        await FileSaver.instance.saveFile(
-          name: 'backup_gastosapp_${DateTime.now().millisecondsSinceEpoch}',
-          bytes: bytes,
-          ext: 'json',
-          mimeType: MimeType.json,
+        
+        final result = await FilePicker.platform.saveFile(
+          dialogTitle: 'Guardar backup',
+          fileName: 'backup_gastosapp_${DateTime.now().millisecondsSinceEpoch}.json',
+          type: FileType.custom,
+          allowedExtensions: ['json'],
         );
+        
+        if (result != null) {
+          final file = File(result);
+          await file.writeAsBytes(bytes);
+        } else {
+          throw Exception('Cancelado por el usuario');
+        }
       }
       
       if (mounted) {

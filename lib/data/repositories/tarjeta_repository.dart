@@ -1,13 +1,13 @@
-import '../database/database_helper.dart';
 import '../models/models.dart';
+import '../services/json_storage.dart';
 
 class TarjetaRepository {
-  final DatabaseHelper _db = DatabaseHelper();
-
   Future<List<Tarjeta>> getAll() async {
-    final db = await _db.database;
-    final result = await db.query('tarjetas');
-    return result.map((map) => Tarjeta.fromMap(map)).toList();
+    final data = await JsonStorageService.load();
+    final tarjetasList = data['tarjetas'] as List<dynamic>? ?? [];
+    return tarjetasList
+        .map((t) => Tarjeta.fromJson(t as Map<String, dynamic>))
+        .toList();
   }
 
   Stream<List<Tarjeta>> watchAll() {
@@ -15,9 +15,8 @@ class TarjetaRepository {
   }
 
   Future<List<Tarjeta>> getByUsuario(int usuarioId) async {
-    final db = await _db.database;
-    final result = await db.query('tarjetas', where: 'usuario_id = ?', whereArgs: [usuarioId]);
-    return result.map((map) => Tarjeta.fromMap(map)).toList();
+    final tarjetas = await getAll();
+    return tarjetas.where((t) => t.usuarioId == usuarioId).toList();
   }
 
   Stream<List<Tarjeta>> watchByUsuario(int usuarioId) {
@@ -25,9 +24,12 @@ class TarjetaRepository {
   }
 
   Future<Tarjeta> getById(int id) async {
-    final db = await _db.database;
-    final result = await db.query('tarjetas', where: 'id = ?', whereArgs: [id]);
-    return Tarjeta.fromMap(result.first);
+    final tarjetas = await getAll();
+    try {
+      return tarjetas.firstWhere((t) => t.id == id);
+    } catch (e) {
+      throw Exception('Tarjeta no encontrada');
+    }
   }
 
   Future<int> create({
@@ -40,26 +42,59 @@ class TarjetaRepository {
     required int usuarioId,
     int? fechaCierre,
   }) async {
-    final db = await _db.database;
-    return await db.insert('tarjetas', {
+    final data = await JsonStorageService.load();
+    final tarjetas = data['tarjetas'] as List;
+    final newId = tarjetas.isEmpty ? 1 : tarjetas.map((t) => t['id'] as int).reduce((a, b) => a > b ? a : b) + 1;
+    tarjetas.add({
+      'id': newId,
       'tipo': tipo,
       'nombre': nombre,
       'banco': banco,
       'nombre_tarjeta': nombreTarjeta,
       'color': color,
       'limite': limite,
-      'usuario_id': usuarioId,
-      'fecha_cierre': fechaCierre,
+      'usuarioId': usuarioId,
+      'fechaCierre': fechaCierre,
     });
+    await JsonStorageService.save(data);
+    return newId;
   }
 
   Future<int> update(Tarjeta tarjeta) async {
-    final db = await _db.database;
-    return await db.update('tarjetas', tarjeta.toMap(), where: 'id = ?', whereArgs: [tarjeta.id]);
+    final data = await JsonStorageService.load();
+    final tarjetas = data['tarjetas'] as List;
+    for (int i = 0; i < tarjetas.length; i++) {
+      if (tarjetas[i]['id'] == tarjeta.id) {
+        tarjetas[i] = {
+          'id': tarjeta.id,
+          'tipo': tarjeta.tipo,
+          'nombre': tarjeta.nombre,
+          'banco': tarjeta.banco,
+          'nombre_tarjeta': tarjeta.nombreTarjeta,
+          'color': tarjeta.color,
+          'limite': tarjeta.limite,
+          'usuarioId': tarjeta.usuarioId,
+          'fechaCierre': tarjeta.fechaCierre,
+        };
+        await JsonStorageService.save(data);
+        return 1;
+      }
+    }
+    return 0;
   }
 
   Future<int> delete(int id) async {
-    final db = await _db.database;
-    return await db.delete('tarjetas', where: 'id = ?', whereArgs: [id]);
+    final data = await JsonStorageService.load();
+    final tarjetas = data['tarjetas'] as List;
+    final initialLength = tarjetas.length;
+    tarjetas.removeWhere((t) => t['id'] == id);
+    
+    if (tarjetas.length != initialLength) {
+      final gastos = data['gastos'] as List;
+      gastos.removeWhere((g) => g['tarjetaId'] == id);
+      await JsonStorageService.save(data);
+      return 1;
+    }
+    return 0;
   }
 }

@@ -18,6 +18,7 @@ class DatabaseHelper {
   static final DatabaseHelper _instance = DatabaseHelper._internal();
   static Database? _database;
   static WebDatabaseImpl? _webDb;
+  static String? _dbPath;
 
   factory DatabaseHelper() => _instance;
   DatabaseHelper._internal() {
@@ -28,20 +29,38 @@ class DatabaseHelper {
 
   bool get isWeb => kIsWeb;
 
+  static void resetDatabase() {
+    debugPrint('DEBUG: resetDatabase called');
+    if (_database != null && _database!.isOpen) {
+      debugPrint('DEBUG: Closing database');
+      _database!.close();
+    }
+    _database = null;
+    debugPrint('DEBUG: Database reset, _database is now: $_database');
+  }
+
   Future<dynamic> get database async {
+    debugPrint('DEBUG: get database called, _database: $_database');
     if (kIsWeb) {
       await _webDb!.init();
       return _webDb!;
     }
-    if (_database != null) return _database!;
+    if (_database != null && _database!.isOpen) {
+      debugPrint('DEBUG: Returning cached database');
+      return _database!;
+    }
+    debugPrint('DEBUG: Creating new database connection');
     _database = await _initDatabase();
+    debugPrint('DEBUG: New database created, _database: $_database');
     return _database!;
   }
 
   Future<Database> _initDatabase() async {
-    final dbFolder = await getApplicationDocumentsDirectory();
-    final path = p.join(dbFolder.path, 'gastos.db');
-    return await openDatabase(path, version: 1, onCreate: _onCreate);
+    if (_dbPath == null) {
+      final dbFolder = await getApplicationDocumentsDirectory();
+      _dbPath = p.join(dbFolder.path, 'gastos.db');
+    }
+    return await openDatabase(_dbPath!, version: 1, onCreate: _onCreate, singleInstance: true);
   }
 
   Future<void> _onCreate(Database db, int version) async {

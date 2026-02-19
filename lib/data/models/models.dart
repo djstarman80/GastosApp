@@ -12,6 +12,9 @@ class Usuario {
     return {'id': id, 'nombre': nombre};
   }
 
+  Map<String, dynamic> toJson() => toMapBackup();
+  factory Usuario.fromJson(Map<String, dynamic> json) => Usuario.fromMapBackup(json);
+
   // Para backup JSON
   factory Usuario.fromMapBackup(Map<String, dynamic> map) {
     return Usuario(id: map['id'] as int, nombre: map['nombre'] as String);
@@ -98,13 +101,16 @@ class Tarjeta {
       'tipo': tipo,
       'nombre': nombre,
       'banco': banco,
-      'bandera': nombreTarjeta,
+      'nombre_tarjeta': nombreTarjeta,
       'color': color,
       'limite': limite,
       'usuarioId': usuarioId,
       'fechaCierre': fechaCierre,
     };
   }
+
+  Map<String, dynamic> toJson() => toMapBackup();
+  factory Tarjeta.fromJson(Map<String, dynamic> json) => Tarjeta.fromMapBackup(json);
 
   Tarjeta copyWith({
     int? id, String? tipo, String? nombre, String? banco, String? nombreTarjeta,
@@ -209,6 +215,9 @@ class Gasto {
       'pagado': pagado,
     };
   }
+
+  Map<String, dynamic> toJson() => toMapBackup();
+  factory Gasto.fromJson(Map<String, dynamic> json) => Gasto.fromMapBackup(json);
 
   Gasto copyWith({
     int? id, double? monto, String? descripcion, int? tarjetaId, int? usuarioId,
