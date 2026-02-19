@@ -26,11 +26,15 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
   Future<void> _exportData() async {
     setState(() => _isLoading = true);
     try {
+      print('DEBUG: kIsWeb=$kIsWeb, Platform.isWindows=${const bool.fromEnvironment('dart.library.io', defaultValue: false)}');
+      
       final json = await _backupService.exportToJson();
       
       if (kIsWeb) {
+        print('DEBUG: Usando downloadJson (web)');
         downloadJson(json, 'backup_gastosapp_${DateTime.now().toIso8601String()}.json');
       } else {
+        print('DEBUG: Usando FileSaver (desktop)');
         final bytes = Uint8List.fromList(json.codeUnits);
         await FileSaver.instance.saveFile(
           name: 'backup_gastosapp_${DateTime.now().millisecondsSinceEpoch}',

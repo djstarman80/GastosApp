@@ -1,8 +1,12 @@
+import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:file_saver/file_saver.dart';
 import '../providers/providers.dart';
 import '../../core/utils/currency_formatter.dart';
 import '../../core/utils/cuota_utils.dart';
@@ -353,6 +357,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       
       if (kIsWeb) {
         downloadJson(json, 'backup_gastosapp_${DateTime.now().toIso8601String()}.json');
+      } else {
+        final bytes = Uint8List.fromList(json.codeUnits);
+        await FileSaver.instance.saveFile(
+          name: 'backup_gastosapp_${DateTime.now().millisecondsSinceEpoch}',
+          bytes: bytes,
+          ext: 'json',
+          mimeType: MimeType.json,
+        );
       }
       
       if (mounted) {
@@ -372,18 +384,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Future<void> _importData() async {
-    if (!kIsWeb) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Importar solo disponible en web')),
-        );
+    String? jsonString;
+    
+    if (kIsWeb) {
+      jsonString = await uploadJson();
+    } else {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['json'],
+      );
+      if (result != null && result.files.single.path != null) {
+        final file = File(result.files.single.path!);
+        jsonString = await file.readAsString();
       }
-      return;
     }
     
-    final jsonString = await uploadJson();
     if (jsonString == null) return;
-
+ 
     final confirmReplace = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
