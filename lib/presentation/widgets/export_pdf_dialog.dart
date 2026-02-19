@@ -2,7 +2,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:file_saver/file_saver.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:file_saver/file_saver.dart' if (dart.library.html) 'package:file_saver/file_saver.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../core/utils/pdf_generator.dart';
 import '../../data/models/models.dart';
@@ -183,24 +184,28 @@ class _ExportPdfDialogState extends ConsumerState<ExportPdfDialog> {
 
       final fileName = 'gastos_${DateTime.now().millisecondsSinceEpoch}';
       
-      if (kIsWeb || Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+      if (kIsWeb) {
+        // Web: usar FileSaver
         await FileSaver.instance.saveFile(
           name: fileName,
           bytes: bytes,
           ext: 'pdf',
-          mimeType: MimeType.pdf,
         );
       } else {
-        final file = await PDFGenerator.generateGastosPDF(
-          gastos: gastos,
-          usuarios: usuarios,
-          tarjetas: tarjetas,
-          config: config,
+        // Windows/Linux/Mac: usar FilePicker para elegir dónde guardar
+        final result = await FilePicker.platform.saveFile(
+          dialogTitle: 'Guardar PDF',
+          fileName: '$fileName.pdf',
+          type: FileType.custom,
+          allowedExtensions: ['pdf'],
         );
-        await Share.shareXFiles(
-          [XFile(file.path)],
-          subject: 'Resumen de Gastos',
-        );
+        
+        if (result != null) {
+          final file = File(result);
+          await file.writeAsBytes(bytes);
+        } else {
+          throw Exception('Guardado cancelado');
+        }
       }
 
       if (mounted) {

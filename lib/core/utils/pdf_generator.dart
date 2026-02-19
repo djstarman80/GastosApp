@@ -273,8 +273,9 @@ class PDFGenerator {
             2: const pw.FlexColumnWidth(1.2),
             3: const pw.FlexColumnWidth(1.8),
             4: const pw.FlexColumnWidth(1.0),
-            5: const pw.FlexColumnWidth(0.8),
-            6: const pw.FlexColumnWidth(1.0),
+            5: const pw.FlexColumnWidth(1.0),
+            6: const pw.FlexColumnWidth(0.8),
+            7: const pw.FlexColumnWidth(1.0),
           },
           children: [
             pw.TableRow(
@@ -285,6 +286,7 @@ class PDFGenerator {
                 _buildHeaderCell('Tarjeta'),
                 _buildHeaderCell('Descripción'),
                 _buildHeaderCell('Monto'),
+                _buildHeaderCell('Valor Cuota'),
                 _buildHeaderCell('Cuotas'),
                 _buildHeaderCell('Última'),
               ],
@@ -292,6 +294,9 @@ class PDFGenerator {
             ...sortedGastos.map((gasto) {
               final tarjeta = getTarjeta(gasto.tarjetaId);
               final cuotaInfo = CuotaUtils.calcularCuotaInfo(gasto, tarjeta);
+              final valorCuota = gasto.cuotas != null && gasto.cuotas! > 0 
+                  ? gasto.monto / gasto.cuotas! 
+                  : gasto.monto;
               
               return pw.TableRow(
                 children: [
@@ -300,6 +305,7 @@ class PDFGenerator {
                   _buildCell(getTarjetaName(gasto.tarjetaId)),
                   _buildCell(gasto.descripcion),
                   _buildCell(currencyFormat.format(gasto.monto)),
+                  _buildCell(currencyFormat.format(valorCuota)),
                   _buildCell(cuotaInfo.cuotasStr),
                   _buildCell(cuotaInfo.ultimaStr),
                 ],
