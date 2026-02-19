@@ -1,5 +1,117 @@
+import '../../data/models/models.dart';
+
 /// Utilidades para cálculos de cuotas y fechas de cierre
+class CuotaInfo {
+  final int cuotaActual;
+  final int totalCuotas;
+  final double valorCuota;
+  final DateTime? fechaUltima;
+  final bool esRecurrente;
+  final bool esContado;
+
+  CuotaInfo({
+    required this.cuotaActual,
+    required this.totalCuotas,
+    required this.valorCuota,
+    this.fechaUltima,
+    required this.esRecurrente,
+    required this.esContado,
+  });
+
+  String toFormattedString({String currencySymbol = '\$'}) {
+    if (esRecurrente) return 'Recurrente';
+    if (esContado) return 'Contado';
+    final fecha = fechaUltima != null ? _formatMonthYear(fechaUltima!) : '-';
+    return 'Cuota $cuotaActual/$totalCuotas ($currencySymbol${valorCuota.toStringAsFixed(0)}) | Última: $fecha';
+  }
+
+  String get cuotasStr {
+    if (esRecurrente) return 'Recurrente';
+    if (esContado) return '-';
+    return '$cuotaActual/$totalCuotas';
+  }
+
+  String get ultimaStr {
+    if (esRecurrente || esContado || fechaUltima == null) return '-';
+    return _formatMonthYear(fechaUltima!);
+  }
+
+  String _formatMonthYear(DateTime date) {
+    final mes = date.month.toString().padLeft(2, '0');
+    return '$mes/${date.year}';
+  }
+}
+
 class CuotaUtils {
+  static CuotaInfo calcularCuotaInfo(
+    Gasto gasto,
+    Tarjeta? tarjeta, {
+    DateTime? fechaReferencia,
+  }) {
+    final ahora = fechaReferencia ?? DateTime.now();
+    
+    if (gasto.esRecurrente) {
+      return CuotaInfo(
+        cuotaActual: 0,
+        totalCuotas: 0,
+        valorCuota: gasto.monto,
+        fechaUltima: null,
+        esRecurrente: true,
+        esContado: false,
+      );
+    }
+    
+    if (gasto.cuotas == null || gasto.cuotas == 0 || gasto.cuotas == 1) {
+      DateTime? fechaResumen;
+      if (tarjeta?.fechaCierre != null) {
+        final fechaGasto = DateTime.fromMillisecondsSinceEpoch(gasto.fecha);
+        fechaResumen = calcularMesResumen(fechaGasto, tarjeta!.fechaCierre!);
+      }
+      return CuotaInfo(
+        cuotaActual: 0,
+        totalCuotas: 0,
+        valorCuota: gasto.monto,
+        fechaUltima: fechaResumen,
+        esRecurrente: false,
+        esContado: true,
+      );
+    }
+    
+    final fechaGasto = DateTime.fromMillisecondsSinceEpoch(gasto.fecha);
+    final int cuotas = gasto.cuotas!;
+    final valorCuota = gasto.monto / cuotas;
+    
+    int cuotaActual;
+    DateTime ultimaCuotaDate;
+    
+    if (tarjeta?.fechaCierre != null) {
+      cuotaActual = calcularCuotasPagadas(
+        fechaGasto,
+        tarjeta!.fechaCierre!,
+        cuotas,
+        ahora.year,
+        ahora.month,
+      );
+      
+      final mesInicioCuotas = calcularMesInicioCuotas(fechaGasto, tarjeta.fechaCierre!);
+      ultimaCuotaDate = DateTime(mesInicioCuotas.year, mesInicioCuotas.month + cuotas - 1);
+    } else {
+      final mesesTranscurridos =
+          (ahora.year - fechaGasto.year) * 12 +
+          (ahora.month - fechaGasto.month);
+      cuotaActual = mesesTranscurridos.clamp(0, cuotas);
+      ultimaCuotaDate = DateTime(fechaGasto.year, fechaGasto.month + cuotas - 1, fechaGasto.day);
+    }
+    
+    return CuotaInfo(
+      cuotaActual: cuotaActual,
+      totalCuotas: cuotas,
+      valorCuota: valorCuota,
+      fechaUltima: ultimaCuotaDate,
+      esRecurrente: false,
+      esContado: false,
+    );
+  }
   /// Calcula el mes/año de resumen basado en la fecha del gasto y la fecha de cierre de la tarjeta.
   /// 
   /// Ejemplo: Tarjeta cierra día 3

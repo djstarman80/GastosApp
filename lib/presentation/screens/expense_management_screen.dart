@@ -18,53 +18,6 @@ class _ExpenseManagementScreenState extends ConsumerState<ExpenseManagementScree
   int? _selectedUsuarioId;
   int? _selectedTarjetaId;
 
-  String _getCuotaInfo(Gasto gasto, Tarjeta? tarjeta) {
-    if (gasto.esRecurrente) return 'Recurrente';
-    if (gasto.cuotas == null || gasto.cuotas == 0 || gasto.cuotas == 1) {
-      // Para gastos de contado, mostrar el mes de resumen si hay fecha de cierre
-      if (tarjeta?.fechaCierre != null) {
-        final fechaGasto = DateTime.fromMillisecondsSinceEpoch(gasto.fecha);
-        final mesResumen = CuotaUtils.calcularMesResumen(fechaGasto, tarjeta!.fechaCierre!);
-        return 'Contado | Resumen: ${DateFormat('MM/yyyy').format(mesResumen)}';
-      }
-      return 'Contado';
-    }
-    
-    final fechaGasto = DateTime.fromMillisecondsSinceEpoch(gasto.fecha);
-    final ahora = DateTime.now();
-    final int cuotas = gasto.cuotas!;
-    final valorCuota = gasto.monto / cuotas;
-    
-    int cuotaActual;
-    DateTime ultimaCuotaDate;
-    
-    if (tarjeta?.fechaCierre != null) {
-      // Usar lógica de fecha de cierre
-      cuotaActual = CuotaUtils.calcularCuotasPagadas(
-        fechaGasto, 
-        tarjeta!.fechaCierre!, 
-        cuotas, 
-        ahora.year, 
-        ahora.month
-      );
-      
-      // Calcular fecha de última cuota basada en fecha de cierre
-      final mesInicioCuotas = CuotaUtils.calcularMesInicioCuotas(fechaGasto, tarjeta.fechaCierre!);
-      ultimaCuotaDate = DateTime(mesInicioCuotas.year, mesInicioCuotas.month + cuotas - 1);
-    } else {
-      // Fallback: usar mes calendario
-      final mesesTranscurridos = 
-        (ahora.year - fechaGasto.year) * 12 + 
-        (ahora.month - fechaGasto.month);
-      cuotaActual = mesesTranscurridos.clamp(0, cuotas);
-      ultimaCuotaDate = DateTime(fechaGasto.year, fechaGasto.month + cuotas - 1, fechaGasto.day);
-    }
-    
-    final fechaUltima = DateFormat('MM/yyyy').format(ultimaCuotaDate);
-    
-    return 'Cuota $cuotaActual/$cuotas (${CurrencyFormatter.format(valorCuota)}) | Última: $fechaUltima';
-  }
-
   @override
   Widget build(BuildContext context) {
     final gastoState = ref.watch(gastoProvider);
@@ -169,6 +122,8 @@ class _ExpenseManagementScreenState extends ConsumerState<ExpenseManagementScree
                           final usuario = usuarioState.usuarios
                               .where((u) => u.id == gasto.usuarioId)
                               .firstOrNull;
+                          
+                          final cuotaInfo = CuotaUtils.calcularCuotaInfo(gasto, tarjeta);
 
                           return Card(
                             child: ListTile(
@@ -181,9 +136,9 @@ class _ExpenseManagementScreenState extends ConsumerState<ExpenseManagementScree
                                     style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                                   ),
                                    Text(
-                                    '${CurrencyFormatter.format(gasto.monto)}    ${_getCuotaInfo(gasto, tarjeta)}',
-                                    style: const TextStyle(fontWeight: FontWeight.bold),
-                                  ),
+                                     '${CurrencyFormatter.format(gasto.monto)}    ${cuotaInfo.toFormattedString()}',
+                                     style: const TextStyle(fontWeight: FontWeight.bold),
+                                   ),
                                 ],
                               ),
                               onTap: () => context.push('/edit_expense/${gasto.id}'),

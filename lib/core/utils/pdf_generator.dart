@@ -217,8 +217,6 @@ class PDFGenerator {
     final sortedGastos = List<Gasto>.from(gastos)
       ..sort((a, b) => b.fecha.compareTo(a.fecha));
 
-    final now = DateTime.now();
-
     String getUsuarioName(int usuarioId) {
       final usuario = usuarios.firstWhere(
         (u) => u.id == usuarioId,
@@ -236,12 +234,7 @@ class PDFGenerator {
     }
 
     String getTarjetaName(int tarjetaId) {
-      final tarjeta = getTarjeta(tarjetaId);
-      return tarjeta?.nombre ?? 'Desconocida';
-    }
-
-    int? getFechaCierre(int tarjetaId) {
-      return getTarjeta(tarjetaId)?.fechaCierre;
+      return getTarjeta(tarjetaId)?.nombre ?? 'Desconocida';
     }
 
     String formatDate(int timestamp) {
@@ -251,45 +244,6 @@ class PDFGenerator {
       } catch (e) {
         return '-';
       }
-    }
-
-    String formatCuotas(Gasto gasto, int? fechaCierre) {
-      if (gasto.cuotas == null || gasto.cuotas == 0) {
-        return '-';
-      }
-      
-      final fechaGasto = DateTime.fromMillisecondsSinceEpoch(gasto.fecha);
-      final cuotasPagadas = CuotaUtils.calcularCuotasPagadas(
-        fechaGasto,
-        fechaCierre ?? 1,
-        gasto.cuotas!,
-        now.year,
-        now.month,
-      );
-      
-      return '$cuotasPagadas/${gasto.cuotas}';
-    }
-
-    String formatUltimaCuota(Gasto gasto, int? fechaCierre) {
-      if (gasto.cuotas == null || gasto.cuotas == 0) {
-        return '-';
-      }
-      
-      final fechaGasto = DateTime.fromMillisecondsSinceEpoch(gasto.fecha);
-      final fechaCierreReal = fechaCierre ?? 1;
-      
-      final mesInicio = CuotaUtils.calcularMesInicioCuotas(
-        fechaGasto, 
-        fechaCierreReal,
-      );
-      
-      final ultimaCuota = DateTime(
-        mesInicio.year,
-        mesInicio.month + gasto.cuotas! - 1,
-        fechaGasto.day,
-      );
-      
-      return dateFormat.format(ultimaCuota);
     }
 
     return pw.Column(
@@ -336,7 +290,9 @@ class PDFGenerator {
               ],
             ),
             ...sortedGastos.map((gasto) {
-              final fechaCierre = getFechaCierre(gasto.tarjetaId);
+              final tarjeta = getTarjeta(gasto.tarjetaId);
+              final cuotaInfo = CuotaUtils.calcularCuotaInfo(gasto, tarjeta);
+              
               return pw.TableRow(
                 children: [
                   _buildCell(formatDate(gasto.fecha)),
@@ -344,8 +300,8 @@ class PDFGenerator {
                   _buildCell(getTarjetaName(gasto.tarjetaId)),
                   _buildCell(gasto.descripcion),
                   _buildCell(currencyFormat.format(gasto.monto)),
-                  _buildCell(formatCuotas(gasto, fechaCierre)),
-                  _buildCell(formatUltimaCuota(gasto, fechaCierre)),
+                  _buildCell(cuotaInfo.cuotasStr),
+                  _buildCell(cuotaInfo.ultimaStr),
                 ],
               );
             }).toList(),
