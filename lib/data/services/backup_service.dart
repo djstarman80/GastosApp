@@ -66,6 +66,7 @@ class BackupService {
     final db = await _db.database;
     final isWeb = kIsWeb;
     
+    // Siempre清除 datos si replace=true
     if (replace) {
       if (isWeb) {
         final webDb = db as WebDatabaseImpl;
@@ -77,7 +78,7 @@ class BackupService {
       }
     }
     
-    // Importar usuarios
+    // Importar usuarios - siempre generar nuevos IDs
     final usuarioIdMap = <int, int>{};
     for (final usuario in backup.usuarios) {
       if (isWeb) {
@@ -90,7 +91,7 @@ class BackupService {
       }
     }
     
-    // Importar tarjetas
+    // Importar tarjetas - siempre generar nuevos IDs
     final tarjetaIdMap = <int, int>{};
     for (final tarjeta in backup.tarjetas) {
       final oldUsuarioId = tarjeta.usuarioId;
@@ -125,7 +126,7 @@ class BackupService {
       }
     }
     
-    // Importar gastos
+    // Importar gastos - siempre generar nuevos IDs
     for (final gasto in backup.gastos) {
       final oldUsuarioId = gasto.usuarioId;
       final oldTarjetaId = gasto.tarjetaId;
