@@ -104832,7 +104832,8 @@ case 1:return B.I(p.at(-1),r)}})
 return B.K($async$B8,r)},
 nm(){var s=0,r=B.L(t.H),q,p=2,o=[],n=[],m=this,l,k,j,i,h,g
 var $async$nm=B.M(function(a,b){if(a===1){o.push(b)
-s=p}for(;;)switch(s){case 0:s=3
+s=p}for(;;)switch(s){case 0:h=null
+s=3
 return B.y(B.O_(),$async$nm)
 case 3:h=b
 if(h==null){s=1
@@ -106234,42 +106235,43 @@ A.m.P(r,m)
 s.push(B.CX(n,n,!0,r,new B.aG0(o),n,n,l,t.S))}m=B.dq(s,A.cr,A.aC,A.ch)}if(o.y)l=B.b([],t.p)
 else{l=B.f_(A.hw,new B.aG1(a),n)
 l=B.b([l,B.rX(A.b7T,new B.aG2(o))],t.p)}return B.vW(l,m,A.b8h)},
-ws(){var s=0,r=B.L(t.H),q=1,p=[],o=this,n,m,l,k,j,i,h,g,f,e,d,c,b,a,a0
-var $async$ws=B.M(function(a1,a2){if(a1===1){p.push(a2)
+ws(){var s=0,r=B.L(t.H),q=1,p=[],o=this,n,m,l,k,j,i,h,g,f,e,d,c,b,a,a0,a1
+var $async$ws=B.M(function(a2,a3){if(a2===1){p.push(a3)
 s=q}for(;;)switch(s){case 0:o.S(new B.aFN(o))
 q=3
-d=o.geg()
-n=d.bZ(0,$.jG(),t.qw).a
-m=d.bZ(0,$.f7(),t.sx).a
-l=d.bZ(0,$.hc(),t.A4).a
+c=o.geg()
+n=c.bZ(0,$.jG(),t.qw).a
+m=c.bZ(0,$.f7(),t.sx).a
+l=c.bZ(0,$.hc(),t.A4).a
 k=null
-c=o.x
-d=c===-1
-j=d?null:c
-b=o.w
-if(b===A.yT)if(d)k="Todos los usuarios"
+b=o.x
+c=b===-1
+j=c?null:b
+a=o.w
+if(a===A.yT)if(c)k="Todos los usuarios"
 else{i=J.aQq(m,new B.aFO(o))
-k=i.b}else if(b===A.yU)if(d)k="Todas las tarjetas"
+k=i.b}else if(a===A.yU)if(c)k="Todas las tarjetas"
 else{h=J.aQq(l,new B.aFP(o))
 k=h.c}g=new B.aqy(o.w,j,k)
 s=6
 return B.y(B.aSc(g,n,l,m),$async$ws)
-case 6:f=a2
-d=o.c
-if(d!=null)B.cv(d,!1).dO()
+case 6:f=a3
+c=o.c
+if(c!=null)B.cv(c,!1).dO()
+e="gastos_"+Date.now()
 s=7
-return B.y(new B.aiG().rX(f,"pdf",A.aXJ,"gastos_"+Date.now()),$async$ws)
-case 7:d=o.c
-if(d!=null)d.a8(t.J).f.ez(A.b2p)
+return B.y(new B.aiG().rX(f,"pdf",A.aXJ,e),$async$ws)
+case 7:c=o.c
+if(c!=null)c.a8(t.J).f.ez(A.b2p)
 q=1
 s=5
 break
 case 3:q=2
-a0=p.pop()
-e=B.ao(a0)
-d=o.c
-if(d!=null){B.cv(d,!1).dO()
-o.c.a8(t.J).f.ez(B.H7(null,null,null,A.hk,null,A.al,null,B.aK("Error al exportar: "+B.k(e),null,null,null,null,null,null,null),null,A.ce,null,null,null,null,null,null,null,null,null,null))}s=5
+a1=p.pop()
+d=B.ao(a1)
+c=o.c
+if(c!=null){B.cv(c,!1).dO()
+o.c.a8(t.J).f.ez(B.H7(null,null,null,A.hk,null,A.al,null,B.aK("Error al exportar: "+B.k(d),null,null,null,null,null,null,null),null,A.ce,null,null,null,null,null,null,null,null,null,null))}s=5
 break
 case 2:s=1
 break
