@@ -1,13 +1,8 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
-import 'dart:io';
-
-abstract class StorageBackend {
-  Future<Map<String, dynamic>> load();
-  Future<void> save(Map<String, dynamic> data);
-  Future<void> clear();
-}
+import 'storage_backend.dart';
 
 class NativeStorageBackend implements StorageBackend {
   static String? _filePath;
@@ -59,6 +54,4 @@ class NativeStorageBackend implements StorageBackend {
   }
 }
 
-class StorageBackendFactory {
-  static StorageBackend create() => NativeStorageBackend();
-}
+StorageBackend createStorageBackend() => NativeStorageBackend();

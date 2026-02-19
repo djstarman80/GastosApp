@@ -1,12 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
-abstract class StorageBackend {
-  Future<Map<String, dynamic>> load();
-  Future<void> save(Map<String, dynamic> data);
-  Future<void> clear();
-}
+import 'storage_backend.dart';
 
 class WebStorageBackend implements StorageBackend {
   static SharedPreferences? _prefs;
@@ -52,6 +47,4 @@ class WebStorageBackend implements StorageBackend {
   }
 }
 
-class StorageBackendFactory {
-  static StorageBackend create() => WebStorageBackend();
-}
+StorageBackend createStorageBackend() => WebStorageBackend();
