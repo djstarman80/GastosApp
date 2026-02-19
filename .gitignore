@@ -43,3 +43,23 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Deployment scripts
+smart_deploy*.py
+smart_deploy*.bat
+smart_deploy_config.json
+smart_fuente_creator.py
+crear_fuente_*.bat
+
+# Backup folders and files
+Fuente/
+backups/
+*.zip
+*.backup
+
+# Development notes
+CAMBIOS*.md
+SCRIPTS.md
+
+# Build folder
+build/
