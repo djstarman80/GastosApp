@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -180,9 +181,11 @@ class _ExportPdfDialogState extends ConsumerState<ExportPdfDialog> {
         Navigator.of(context).pop();
       }
 
-      if (kIsWeb) {
+      final fileName = 'gastos_${DateTime.now().millisecondsSinceEpoch}';
+      
+      if (kIsWeb || Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
         await FileSaver.instance.saveFile(
-          name: 'gastos_${DateTime.now().millisecondsSinceEpoch}',
+          name: fileName,
           bytes: bytes,
           ext: 'pdf',
           mimeType: MimeType.pdf,
