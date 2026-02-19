@@ -18,6 +18,7 @@ class _ExportPdfDialogState extends ConsumerState<ExportPdfDialog> {
   PdfFilterType _selectedFilter = PdfFilterType.todos;
   int? _selectedId;
   bool _isExporting = false;
+  static const int _todosId = -1;
 
   @override
   Widget build(BuildContext context) {
@@ -59,7 +60,7 @@ class _ExportPdfDialogState extends ConsumerState<ExportPdfDialog> {
                   onChanged: (value) {
                     setState(() {
                       _selectedFilter = value!;
-                      _selectedId = usuarios.isNotEmpty ? usuarios.first.id : null;
+                      _selectedId = _todosId;
                     });
                   },
                 ),
@@ -67,13 +68,18 @@ class _ExportPdfDialogState extends ConsumerState<ExportPdfDialog> {
                   DropdownButton<int>(
                     value: _selectedId,
                     isExpanded: true,
-                    hint: const Text('Seleccionar usuario'),
-                    items: usuarios.map((u) {
-                      return DropdownMenuItem(
-                        value: u.id,
-                        child: Text(u.nombre),
-                      );
-                    }).toList(),
+                    items: [
+                      const DropdownMenuItem(
+                        value: _todosId,
+                        child: Text('Todos los usuarios'),
+                      ),
+                      ...usuarios.map((u) {
+                        return DropdownMenuItem(
+                          value: u.id,
+                          child: Text(u.nombre),
+                        );
+                      }).toList(),
+                    ],
                     onChanged: (value) {
                       setState(() => _selectedId = value);
                     },
@@ -85,7 +91,7 @@ class _ExportPdfDialogState extends ConsumerState<ExportPdfDialog> {
                   onChanged: (value) {
                     setState(() {
                       _selectedFilter = value!;
-                      _selectedId = tarjetas.isNotEmpty ? tarjetas.first.id : null;
+                      _selectedId = _todosId;
                     });
                   },
                 ),
@@ -93,13 +99,18 @@ class _ExportPdfDialogState extends ConsumerState<ExportPdfDialog> {
                   DropdownButton<int>(
                     value: _selectedId,
                     isExpanded: true,
-                    hint: const Text('Seleccionar tarjeta'),
-                    items: tarjetas.map((t) {
-                      return DropdownMenuItem(
-                        value: t.id,
-                        child: Text(t.nombre),
-                      );
-                    }).toList(),
+                    items: [
+                      const DropdownMenuItem(
+                        value: _todosId,
+                        child: Text('Todas las tarjetas'),
+                      ),
+                      ...tarjetas.map((t) {
+                        return DropdownMenuItem(
+                          value: t.id,
+                          child: Text(t.nombre),
+                        );
+                      }).toList(),
+                    ],
                     onChanged: (value) {
                       setState(() => _selectedId = value);
                     },
@@ -122,8 +133,7 @@ class _ExportPdfDialogState extends ConsumerState<ExportPdfDialog> {
   }
 
   bool _canExport() {
-    if (_selectedFilter == PdfFilterType.todos) return true;
-    return _selectedId != null;
+    return true;
   }
 
   Future<void> _exportPdf() async {
@@ -135,17 +145,27 @@ class _ExportPdfDialogState extends ConsumerState<ExportPdfDialog> {
       final tarjetas = ref.read(tarjetaProvider).tarjetas;
 
       String? filterName;
-      if (_selectedFilter == PdfFilterType.porUsuario && _selectedId != null) {
-        final usuario = usuarios.firstWhere((u) => u.id == _selectedId);
-        filterName = usuario.nombre;
-      } else if (_selectedFilter == PdfFilterType.porTarjeta && _selectedId != null) {
-        final tarjeta = tarjetas.firstWhere((t) => t.id == _selectedId);
-        filterName = tarjeta.nombre;
+      int? effectiveFilterId = _selectedId == _todosId ? null : _selectedId;
+      
+      if (_selectedFilter == PdfFilterType.porUsuario) {
+        if (_selectedId == _todosId) {
+          filterName = 'Todos los usuarios';
+        } else {
+          final usuario = usuarios.firstWhere((u) => u.id == _selectedId);
+          filterName = usuario.nombre;
+        }
+      } else if (_selectedFilter == PdfFilterType.porTarjeta) {
+        if (_selectedId == _todosId) {
+          filterName = 'Todas las tarjetas';
+        } else {
+          final tarjeta = tarjetas.firstWhere((t) => t.id == _selectedId);
+          filterName = tarjeta.nombre;
+        }
       }
 
       final config = PdfExportConfig(
         filterType: _selectedFilter,
-        filterId: _selectedId,
+        filterId: effectiveFilterId,
         filterName: filterName,
       );
 

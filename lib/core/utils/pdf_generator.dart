@@ -96,8 +96,10 @@ class PDFGenerator {
       case PdfFilterType.todos:
         return gastos;
       case PdfFilterType.porUsuario:
+        if (config.filterId == null) return gastos;
         return gastos.where((g) => g.usuarioId == config.filterId).toList();
       case PdfFilterType.porTarjeta:
+        if (config.filterId == null) return gastos;
         return gastos.where((g) => g.tarjetaId == config.filterId).toList();
     }
   }
@@ -107,9 +109,9 @@ class PDFGenerator {
       case PdfFilterType.todos:
         return 'Resumen de Gastos - Todos';
       case PdfFilterType.porUsuario:
-        return 'Resumen de Gastos - ${config.filterName}';
+        return 'Resumen de Gastos - Usuario: ${config.filterName ?? "Todos"}';
       case PdfFilterType.porTarjeta:
-        return 'Resumen de Gastos - ${config.filterName}';
+        return 'Resumen de Gastos - Tarjeta: ${config.filterName ?? "Todas"}';
     }
   }
 
