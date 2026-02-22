@@ -1,0 +1,115 @@
+# Resumen: Cálculos de Tarjetas de Crédito
+
+## Concepto Central
+
+Las tarjetas de crédito tienen un **día de cierre** (ej: día 3) que determina cuándo cierra el resumen mensual. Las compras realizadas **antes** del cierre aparecen en ese mismo mes, las realizadas **después** aparecen en el **mes siguiente**.
+
+---
+
+## Regla Fundamental
+
+```
+Si (día de compra ≤ día de cierre) → Mes de Resumen = mismo mes
+Si (día de compra > día de cierre) → Mes de Resumen = mes siguiente
+```
+
+**Ejemplo** (cierre día 3):
+- Compra 9 julio → Resumen julio ✅
+- Compra 11 julio → Resumen agosto ✅
+
+---
+
+## Tipos de Gastos
+
+| Tipo | Lógica | Ejemplo ($120 en 6 cuotas) |
+|------|--------|----------------------------|
+| **Contado** | Monto completo en mes de resumen | $120 en julio |
+| **Cuotas** | monto ÷ cuotas | $20/mes × 6 meses |
+| **Recurrente** | Monto completo cada mes desde resumen | $120 cada mes |
+
+---
+
+## Algoritmo en Pseudocódigo
+
+```
+PARA cada gasto:
+  Obtener tarjeta del gasto
+  fecha_cierre = tarjeta.fechaCierre
+  fecha_compra = gasto.fecha
+  
+  SI gasto.esRecurrente:
+    monto_mostrar = gasto.monto
+  SINO SI gasto.cuotas > 1:
+    monto_mostrar = gasto.monto / gasto.cuotas
+  SINO:
+    monto_mostrar = gasto.monto  # contado
+  
+  # Determinar mes de resumen
+  SI fecha_cierre != null:
+    SI gasto.fecha_compra.dia <= fecha_cierre:
+      mes_resumen = fecha_compra.mes
+    SINO:
+      mes_resumen = fecha_compra.mes + 1
+  SINO:
+    mes_resumen = fecha_compra.mes  # sin cierre
+  
+  # Mostrar solo si coincide con mes seleccionado
+  SI mes_resumen == mes_seleccionado:
+    agregar_gasto_al_total(monto_mostrar)
+
+TOTAL = suma de todos los monto_mostrar
+```
+
+---
+
+## Modelo de Datos
+
+```dart
+// Tarjeta
+class Tarjeta {
+  int id;
+  String nombre;
+  int? fechaCierre;  // Día 1-31, null = sin cierre
+  int usuarioId;
+}
+
+// Gasto
+class Gasto {
+  int id;
+  double monto;      // Monto TOTAL
+  int? cuotas;      // null/0/1 = contado, >1 = cuotas
+  bool esRecurrente;
+  int fecha;         // millisecondsSinceEpoch
+  int tarjetaId;
+}
+```
+
+---
+
+## Clases Utility Clave
+
+```dart
+// Calcula el mes de resumen
+calcularMesResumen(fechaGasto, fechaCierre) → DateTime
+
+// Cuántas cuotas se han pagado
+calcularCuotasPagadas(fechaGasto, fechaCierre, totalCuotas, año, mes) → int
+
+// Si el gasto debe aparecer en el mes
+debeAparecerEnMes(fechaGasto, fechaCierre, cuotas, año, mes) → bool
+```
+
+---
+
+## Resumen Visual
+
+```
+Compra: 15 de julio, Cierre: día 3, 6 cuotas
+
+Julio  │ Agosto │ Sept. │ Oct. │ Nov. │ Dic.
+───────┼────────┼───────┼──────┼──────┼─────
+  -    │  $20   │  $20  │ $20  │ $20  │ $20
+       │  ↑     │       │      │      │
+       │ primera│      cuotas restantes
+       │ cuota
+```

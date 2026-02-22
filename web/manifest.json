@@ -1,13 +1,14 @@
 {
-    "name": "gastos_app",
-    "short_name": "gastos_app",
+    "name": "GastosApp - Gestión de Gastos",
+    "short_name": "GastosApp",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "App de gestión de gastos personales y tarjetas de crédito",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
+    "scope": "/GastosApp/",
     "icons": [
         {
             "src": "icons/Icon-192.png",
