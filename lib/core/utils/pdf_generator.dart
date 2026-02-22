@@ -15,11 +15,7 @@ class PdfExportConfig {
   final int? filterId;
   final String? filterName;
 
-  PdfExportConfig({
-    required this.filterType,
-    this.filterId,
-    this.filterName,
-  });
+  PdfExportConfig({required this.filterType, this.filterId, this.filterName});
 }
 
 class PDFGenerator {
@@ -33,7 +29,7 @@ class PDFGenerator {
 
     final pdf = pw.Document();
     final currencyFormat = NumberFormat.currency(
-      locale: 'es_UY',
+      locale: 'es_ES',
       symbol: '\$',
       decimalDigits: 2,
     );
@@ -51,9 +47,9 @@ class PDFGenerator {
         margin: const pw.EdgeInsets.all(40),
         build: (context) => [
           _buildHeader(titulo, headerDateFormat),
-          pw.SizedBox(height: 20),
+          pw.SizedBox(height: 10),
           _buildResumen(filteredGastos.length, total, currencyFormat),
-          pw.SizedBox(height: 20),
+          pw.SizedBox(height: 10),
           _buildGastosTable(
             filteredGastos,
             usuarios,
@@ -215,7 +211,7 @@ class PDFGenerator {
     }
 
     final sortedGastos = List<Gasto>.from(gastos)
-      ..sort((a, b) => b.fecha.compareTo(a.fecha));
+      ..sort((a, b) => a.fecha.compareTo(b.fecha));
 
     String getUsuarioName(int usuarioId) {
       final usuario = usuarios.firstWhere(
@@ -268,14 +264,14 @@ class PDFGenerator {
         pw.Table(
           border: pw.TableBorder.all(color: PdfColors.grey300),
           columnWidths: {
-            0: const pw.FlexColumnWidth(1.0),
-            1: const pw.FlexColumnWidth(1.2),
-            2: const pw.FlexColumnWidth(1.2),
-            3: const pw.FlexColumnWidth(1.8),
-            4: const pw.FlexColumnWidth(1.0),
-            5: const pw.FlexColumnWidth(1.0),
-            6: const pw.FlexColumnWidth(0.8),
-            7: const pw.FlexColumnWidth(1.0),
+            0: const pw.IntrinsicColumnWidth(),
+            1: const pw.IntrinsicColumnWidth(),
+            2: const pw.IntrinsicColumnWidth(),
+            3: const pw.IntrinsicColumnWidth(),
+            4: const pw.IntrinsicColumnWidth(),
+            5: const pw.IntrinsicColumnWidth(),
+            6: const pw.IntrinsicColumnWidth(),
+            7: const pw.IntrinsicColumnWidth(),
           },
           children: [
             pw.TableRow(
@@ -294,10 +290,10 @@ class PDFGenerator {
             ...sortedGastos.map((gasto) {
               final tarjeta = getTarjeta(gasto.tarjetaId);
               final cuotaInfo = CuotaUtils.calcularCuotaInfo(gasto, tarjeta);
-              final valorCuota = gasto.cuotas != null && gasto.cuotas! > 0 
-                  ? gasto.monto / gasto.cuotas! 
+              final valorCuota = gasto.cuotas != null && gasto.cuotas! > 0
+                  ? gasto.monto / gasto.cuotas!
                   : gasto.monto;
-              
+
               return pw.TableRow(
                 children: [
                   _buildCell(formatDate(gasto.fecha)),
@@ -319,12 +315,12 @@ class PDFGenerator {
 
   static pw.Widget _buildHeaderCell(String text) {
     return pw.Padding(
-      padding: const pw.EdgeInsets.all(6),
+      padding: const pw.EdgeInsets.all(4),
       child: pw.Text(
         text,
         style: pw.TextStyle(
           fontWeight: pw.FontWeight.bold,
-          fontSize: 9,
+          fontSize: 8,
           color: PdfColors.grey700,
         ),
       ),
@@ -333,12 +329,8 @@ class PDFGenerator {
 
   static pw.Widget _buildCell(String text) {
     return pw.Padding(
-      padding: const pw.EdgeInsets.all(6),
-      child: pw.Text(
-        text,
-        style: const pw.TextStyle(fontSize: 9),
-        maxLines: 2,
-      ),
+      padding: const pw.EdgeInsets.all(4),
+      child: pw.Text(text, style: const pw.TextStyle(fontSize: 8), maxLines: 1),
     );
   }
 }
